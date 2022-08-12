@@ -20,7 +20,7 @@ I'm NOT familiar with Bluetooth APIs. So, I Can not Fully Explain it. Please Con
 ## HOWTO?
 
 ```
-first of all, if you want connect a Cadence Sensor, You Must Have a Bluetooth Dongle.
+first of all, if you want to connect a Cadence Sensor to the Computer, You Must Have a Bluetooth Dongle.
 Connect Dongle to USB. And Search the Cadence and pair with your Computer.
 ```
 ```
