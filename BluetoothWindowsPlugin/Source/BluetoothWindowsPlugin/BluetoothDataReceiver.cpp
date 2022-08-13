@@ -99,7 +99,7 @@ uint32 BluetoothDataReceiver::Run()
 
             if (!hLEDevice)
             {
-                //µğ¹ÙÀÌ½º°¡ Á¸ÀçÇÏÁö ¾ÊÀ¸¸é, ´Ù½Ã ·çÇÁ¸¦ ¹İº¹ÇØ¼­ µğ¹ÙÀÌ½º¸¦ Ã£À» ¶§±îÁö ¹İº¹ÇÔ.
+                //ë””ë°”ì´ìŠ¤ê°€ ì¡´ì¬í•˜ì§€ ì•Šìœ¼ë©´, ë‹¤ì‹œ ë£¨í”„ë¥¼ ë°˜ë³µí•´ì„œ ë””ë°”ì´ìŠ¤ë¥¼ ì°¾ì„ ë•Œê¹Œì§€ ë°˜ë³µí•¨.
                 UE_LOG(LogTemp, Warning, TEXT("device can't find?"));
                 FPlatformProcess::Sleep(1);
                 continue;
@@ -346,7 +346,7 @@ uint32 BluetoothDataReceiver::Run()
                 ////set the appropriate callback function when the descriptor change value
                 //BLUETOOTH_GATT_EVENT_HANDLE EventHandle;
 
-                //Áß¿ä. ÆÄ½Ì µ¥ÀÌÅÍ ÄÚµå´Â ¿©±â¼­ ½ÇÇàµÉ °ÍÀÌ´Ù.
+                //ì¤‘ìš”. íŒŒì‹± ë°ì´í„° ì½”ë“œëŠ” ì—¬ê¸°ì„œ ì‹¤í–‰ë  ê²ƒì´ë‹¤.
                 if (currGattChar->IsNotifiable) {
 
                     BTH_LE_GATT_EVENT_TYPE EventType = CharacteristicValueChangedEvent;
@@ -429,20 +429,20 @@ uint32 BluetoothDataReceiver::Run()
             //}
 
 
-            //·çÇÁ Àç½ÃÀÛ Àü Àá½Ã ±â´Ù¸®´Â ½Ã°£.
+            //ë£¨í”„ ì¬ì‹œì‘ ì „ ì ì‹œ ê¸°ë‹¤ë¦¬ëŠ” ì‹œê°„.
             FPlatformProcess::Sleep(0.05);
 
-            //µ¥ÀÌÅÍ ÆÄ½Ì ÀÌº¥Æ® unregister.
+            //ë°ì´í„° íŒŒì‹± ì´ë²¤íŠ¸ unregister.
             if (EventHandle != nullptr)
             {
                 BluetoothGATTUnregisterEvent(EventHandle, BLUETOOTH_GATT_FLAG_NONE);
                 UE_LOG(LogTemp, Warning, TEXT("Unregister OK"));
             }
 
-            //ÇÚµé ÀÛ¾÷ ³¡.
+            //í•¸ë“¤ ì‘ì—… ë.
             CloseHandle(hLEDevice);
 
-            //mallocÇÑ ºÎºĞ FreeÇØÁØ´Ù.
+            //mallocí•œ ë¶€ë¶„ Freeí•´ì¤€ë‹¤.
             free(pCharBuffer);
             pCharBuffer = nullptr;
             free(pServiceBuffer);
@@ -456,10 +456,10 @@ uint32 BluetoothDataReceiver::Run()
                 return 1;
             }
 
-            //·çÇÁ Àç½ÃÀÛ À§Ä¡
+            //ë£¨í”„ ì¬ì‹œì‘ ìœ„ì¹˜
             if (!m_pause && !m_kill)
             {
-                //·çÇÁ¸¦ ´Ù½Ã ½ÃÀÛÇÑ´Ù... ±â±â°¡ ²¨Á®ÀÖ´ÂÁö µîµî »çÀ¯·Î Àç¿¬°á -> µ¥ÀÌÅÍ ¹Ş±â µîÀ» ÇÑ´Ù.
+                //ë£¨í”„ë¥¼ ë‹¤ì‹œ ì‹œì‘í•œë‹¤... ê¸°ê¸°ê°€ êº¼ì ¸ìˆëŠ”ì§€ ë“±ë“± ì‚¬ìœ ë¡œ ì¬ì—°ê²° -> ë°ì´í„° ë°›ê¸° ë“±ì„ í•œë‹¤.
                 continue;
             }
 
@@ -553,22 +553,22 @@ void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTyp
         // 2 bytes : Crank Revolotions
         // 2 bytes : crank Event Time Stamp
 
-        // ¿¹½Ã
-        // 03 - A0 - B1 - C2 - D3 - E4 - F5 - G6 - H7 - I8 - J9 ÀÌ¶õ µ¥ÀÌÅÍ°¡ ÀÖ´Ù°í °¡Á¤ÇÏÀÚ
-        // À§ÀÇ CSCMeasurement¿¡ ÀÇÇÏ¸é
+        // ì˜ˆì‹œ
+        // 03 - A0 - B1 - C2 - D3 - E4 - F5 - G6 - H7 - I8 - J9 ì´ë€ ë°ì´í„°ê°€ ìˆë‹¤ê³  ê°€ì •í•˜ì
+        // ìœ„ì˜ CSCMeasurementì— ì˜í•˜ë©´
         // 03 / A0 - B1 - C2 - D3 / E4 - F5 / G6 - H7 / I8 - J9
-        // µ¥ÀÌÅÍ´Â ÀÌ·¸°Ô ½½·¡½¬(/) ´ë·Î ³ª´¶´Ù.
-        // ÀÌ µ¥ÀÌÅÍ´Â °¢°¢ Little Endian ÀÌ¶ó
-        // ¿¹¸¦ µé¸é, wheel revo °ªÀÎ A0 - B1 - C2 - D3 ¸¦
-        // D3C2B1A0 À¸·Î ÀĞ´Â´Ù´Â ÀÇ¹Ì´Ù.
-        // ÀÚ¼¼ÇÑ Á¤º¸´Â Little Endian ±¸±Û¿¡ °Ë»öÇØ¼­ È®ÀÎÇÒ °Í.
-        // C#Àº BitConverter°¡ ±âº» ¼¼ÆÃÀÌ Little EndianÀÌ¶ó ÇÔ¼ö¸¦ ±×³É »ç¿ëÇÏÁö¸¸
-        // C++¿¡¼± ¾ø´Â ±â´ÉÀÌ¶ó Æ÷ÀÎÅÍ·Î ¸¸µë.
+        // ë°ì´í„°ëŠ” ì´ë ‡ê²Œ ìŠ¬ë˜ì‰¬(/) ëŒ€ë¡œ ë‚˜ë‰œë‹¤.
+        // ì´ ë°ì´í„°ëŠ” ê°ê° Little Endian ì´ë¼
+        // ì˜ˆë¥¼ ë“¤ë©´, wheel revo ê°’ì¸ A0 - B1 - C2 - D3 ë¥¼
+        // D3C2B1A0 ìœ¼ë¡œ ì½ëŠ”ë‹¤ëŠ” ì˜ë¯¸ë‹¤.
+        // ìì„¸í•œ ì •ë³´ëŠ” Little Endian êµ¬ê¸€ì— ê²€ìƒ‰í•´ì„œ í™•ì¸í•  ê²ƒ.
+        // C#ì€ BitConverterê°€ ê¸°ë³¸ ì„¸íŒ…ì´ Little Endianì´ë¼ í•¨ìˆ˜ë¥¼ ê·¸ëƒ¥ ì‚¬ìš©í•˜ì§€ë§Œ
+        // C++ì—ì„  ì—†ëŠ” ê¸°ëŠ¥ì´ë¼ í¬ì¸í„°ë¡œ ë§Œë“¬.
 
         const uint8 WheelRevolutionDataPresent = 0x01;
         const uint8 CrankRevolutionDataPresent = 0x02;
 
-        //cumilative wheel revo
+        //cumulative wheel revo
         uint32 currentWheelRevolutions = 0;
         //last wheel event time
         uint16 currentWheelEventTimestamp = 0;
