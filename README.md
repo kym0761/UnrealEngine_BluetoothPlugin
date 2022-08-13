@@ -7,7 +7,7 @@ UnrealEngine ver 4.26 or Higher (Maybe? I Use This Plugin in 4.26 Project, And I
 
 ```
 Thanks For Information
-Reference : https://forums.unrealengine.com/t/including-bluetoothleapis-h-not-working/410334/7
+Reference : https://forums.unrealengine.com/t/including-bluetoothleapis-h-not-working/410334/8
 ```
 
 ```
