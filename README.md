@@ -24,12 +24,12 @@ first of all, if you want to connect a Cadence Sensor to the Computer, You Must 
 Connect Dongle to USB. And Search the Cadence and pair with your Computer.
 ```
 ```
-To Use this Code, You must know Bluetooth UUID.
+To Use this Code, You must know the Bluetooth UUID.
 You can Search UUID in this Website : https://www.bluetooth.com/specifications/assigned-numbers/
 Candence UUID is 0x1816
 So, TO_SEARCH_DEVICE_UUID will be "{00001816-0000-1000-8000-00805F9B34FB}" //(XXXXXXXX-0000-1000-8000-00805F9B34FB)
 You can find this Variable in BluetoothDataReceiver.h 11 line.
-Maybe it could Do with other Bluetooth Device if you change UUID and know about your device Data Format.
+Maybe it could Do with other Bluetooth Devices if you change UUID and know about your device Data Format.
 ```
 
 ```
@@ -44,13 +44,13 @@ FRunnable Class will Run Bluetooth APIs. See virtual uint32 Run();
 
 ```
 in ParsingBluetoothData(), You Can Access the Bluetooth Data in EventOutParameter.
-it will Parse Raw Data to CSCMeasurement format Data.
+it will Parse the Raw Data to the CSCMeasurement format Data.
 ```
 
 ```
 You Can Receive Bluetooth Data from BluetoothDataReceiver.
 And, You Can Read Data with ABluetoothDataReader Actor. (not only AActor, UObject also can do it.)
-There is Example in BluetoothDataReader.h And .cpp
-You must know that "My RPM Formula" in "Reader.cpp code" is not Correct Answer Because I Don't Know (>_< sorry)
+There is a Example in BluetoothDataReader.h And .cpp
+You must know that "My RPM Formula" in "Reader.cpp code" is not a Correct Answer Because I Don't Know (>_< sorry)
 it is the temporary Fomula for just check that it works!
 ```
