@@ -70,6 +70,19 @@ bool BluetoothDataReceiver::Init()
 	return true;
 }
 
+void BluetoothDataReceiver::Stop()
+{
+    m_kill = true;
+    //m_pause = false; // why? i don t know
+    m_pause = true;
+
+    if (m_semaphore)
+    {
+        // Trigger the FEvent in case the thread is sleeping
+        m_semaphore->Trigger();
+    }
+}
+
 uint32 BluetoothDataReceiver::Run()
 {
     FPlatformProcess::Sleep(0.03);
@@ -99,9 +112,9 @@ uint32 BluetoothDataReceiver::Run()
 
             if (!hLEDevice)
             {
-                //ë””ë°”ì´ìŠ¤ê°€ ì¡´ì¬í•˜ì§€ ì•Šìœ¼ë©´, ë‹¤ì‹œ ë£¨í”„ë¥¼ ë°˜ë³µí•´ì„œ ë””ë°”ì´ìŠ¤ë¥¼ ì°¾ì„ ë•Œê¹Œì§€ ë°˜ë³µí•¨.
+                //µğ¹ÙÀÌ½º°¡ Á¸ÀçÇÏÁö ¾ÊÀ¸¸é, ´Ù½Ã ·çÇÁ¸¦ ¹İº¹ÇØ¼­ µğ¹ÙÀÌ½º¸¦ Ã£À» ¶§±îÁö ¹İº¹ÇÔ.
                 UE_LOG(LogTemp, Warning, TEXT("device can't find?"));
-                FPlatformProcess::Sleep(1);
+                FPlatformProcess::Sleep(0.03);
                 continue;
             }
 
@@ -346,7 +359,7 @@ uint32 BluetoothDataReceiver::Run()
                 ////set the appropriate callback function when the descriptor change value
                 //BLUETOOTH_GATT_EVENT_HANDLE EventHandle;
 
-                //ì¤‘ìš”. íŒŒì‹± ë°ì´í„° ì½”ë“œëŠ” ì—¬ê¸°ì„œ ì‹¤í–‰ë  ê²ƒì´ë‹¤.
+                //Áß¿ä. ÆÄ½Ì µ¥ÀÌÅÍ ÄÚµå´Â ¿©±â¼­ ½ÇÇàµÉ °ÍÀÌ´Ù.
                 if (currGattChar->IsNotifiable) {
 
                     BTH_LE_GATT_EVENT_TYPE EventType = CharacteristicValueChangedEvent;
@@ -367,7 +380,7 @@ uint32 BluetoothDataReceiver::Run()
 
                     }
 
-                    UE_LOG(LogTemp, Warning, TEXT("Register OK"));
+                    //UE_LOG(LogTemp, Warning, TEXT("Register OK"));
                 }
 
 
@@ -418,6 +431,7 @@ uint32 BluetoothDataReceiver::Run()
                 //    pCharValueBuffer = NULL;
                 //}
 
+               
             }
 
             //// Go into an inf loop that sleeps. you will ideally see notifications from the Cadence device
@@ -428,21 +442,17 @@ uint32 BluetoothDataReceiver::Run()
             //    continue;
             //}
 
-
-            //ë£¨í”„ ì¬ì‹œì‘ ì „ ì ì‹œ ê¸°ë‹¤ë¦¬ëŠ” ì‹œê°„.
-            FPlatformProcess::Sleep(0.05);
-
-            //ë°ì´í„° íŒŒì‹± ì´ë²¤íŠ¸ unregister.
+            //µ¥ÀÌÅÍ ÆÄ½Ì ÀÌº¥Æ® unregister.
             if (EventHandle != nullptr)
             {
                 BluetoothGATTUnregisterEvent(EventHandle, BLUETOOTH_GATT_FLAG_NONE);
-                UE_LOG(LogTemp, Warning, TEXT("Unregister OK"));
+                //UE_LOG(LogTemp, Warning, TEXT("Unregister OK"));
             }
 
-            //í•¸ë“¤ ì‘ì—… ë.
+            //ÇÚµé ÀÛ¾÷ ³¡.
             CloseHandle(hLEDevice);
 
-            //mallocí•œ ë¶€ë¶„ Freeí•´ì¤€ë‹¤.
+            //mallocÇÑ ºÎºĞ FreeÇØÁØ´Ù.
             free(pCharBuffer);
             pCharBuffer = nullptr;
             free(pServiceBuffer);
@@ -456,10 +466,10 @@ uint32 BluetoothDataReceiver::Run()
                 return 1;
             }
 
-            //ë£¨í”„ ì¬ì‹œì‘ ìœ„ì¹˜
+            //·çÇÁ Àç½ÃÀÛ À§Ä¡
             if (!m_pause && !m_kill)
             {
-                //ë£¨í”„ë¥¼ ë‹¤ì‹œ ì‹œì‘í•œë‹¤... ê¸°ê¸°ê°€ êº¼ì ¸ìˆëŠ”ì§€ ë“±ë“± ì‚¬ìœ ë¡œ ì¬ì—°ê²° -> ë°ì´í„° ë°›ê¸° ë“±ì„ í•œë‹¤.
+                //·çÇÁ¸¦ ´Ù½Ã ½ÃÀÛÇÑ´Ù... ±â±â°¡ ²¨Á®ÀÖ´ÂÁö µîµî »çÀ¯·Î Àç¿¬°á -> µ¥ÀÌÅÍ ¹Ş±â µîÀ» ÇÑ´Ù.
                 continue;
             }
 
@@ -468,18 +478,6 @@ uint32 BluetoothDataReceiver::Run()
     }
 
     return 0;
-}
-
-void BluetoothDataReceiver::Stop()
-{
-    m_kill = true;
-    m_pause = false;
-
-    if (m_semaphore)
-    {
-        // Trigger the FEvent in case the thread is sleeping
-        m_semaphore->Trigger();
-    }
 }
 
 HANDLE BluetoothDataReceiver::GetBLEHandle(GUID AGuid)
@@ -553,22 +551,22 @@ void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTyp
         // 2 bytes : Crank Revolotions
         // 2 bytes : crank Event Time Stamp
 
-        // ì˜ˆì‹œ
-        // 03 - A0 - B1 - C2 - D3 - E4 - F5 - G6 - H7 - I8 - J9 ì´ë€ ë°ì´í„°ê°€ ìˆë‹¤ê³  ê°€ì •í•˜ì
-        // ìœ„ì˜ CSCMeasurementì— ì˜í•˜ë©´
+        // ¿¹½Ã
+        // 03 - A0 - B1 - C2 - D3 - E4 - F5 - G6 - H7 - I8 - J9 ÀÌ¶õ µ¥ÀÌÅÍ°¡ ÀÖ´Ù°í °¡Á¤ÇÏÀÚ
+        // À§ÀÇ CSCMeasurement¿¡ ÀÇÇÏ¸é
         // 03 / A0 - B1 - C2 - D3 / E4 - F5 / G6 - H7 / I8 - J9
-        // ë°ì´í„°ëŠ” ì´ë ‡ê²Œ ìŠ¬ë˜ì‰¬(/) ëŒ€ë¡œ ë‚˜ë‰œë‹¤.
-        // ì´ ë°ì´í„°ëŠ” ê°ê° Little Endian ì´ë¼
-        // ì˜ˆë¥¼ ë“¤ë©´, wheel revo ê°’ì¸ A0 - B1 - C2 - D3 ë¥¼
-        // D3C2B1A0 ìœ¼ë¡œ ì½ëŠ”ë‹¤ëŠ” ì˜ë¯¸ë‹¤.
-        // ìì„¸í•œ ì •ë³´ëŠ” Little Endian êµ¬ê¸€ì— ê²€ìƒ‰í•´ì„œ í™•ì¸í•  ê²ƒ.
-        // C#ì€ BitConverterê°€ ê¸°ë³¸ ì„¸íŒ…ì´ Little Endianì´ë¼ í•¨ìˆ˜ë¥¼ ê·¸ëƒ¥ ì‚¬ìš©í•˜ì§€ë§Œ
-        // C++ì—ì„  ì—†ëŠ” ê¸°ëŠ¥ì´ë¼ í¬ì¸í„°ë¡œ ë§Œë“¬.
+        // µ¥ÀÌÅÍ´Â ÀÌ·¸°Ô ½½·¡½¬(/) ´ë·Î ³ª´¶´Ù.
+        // ÀÌ µ¥ÀÌÅÍ´Â °¢°¢ Little Endian ÀÌ¶ó
+        // ¿¹¸¦ µé¸é, wheel revo °ªÀÎ A0 - B1 - C2 - D3 ¸¦
+        // D3C2B1A0 À¸·Î ÀĞ´Â´Ù´Â ÀÇ¹Ì´Ù.
+        // ÀÚ¼¼ÇÑ Á¤º¸´Â Little Endian ±¸±Û¿¡ °Ë»öÇØ¼­ È®ÀÎÇÒ °Í.
+        // C#Àº BitConverter°¡ ±âº» ¼¼ÆÃÀÌ Little EndianÀÌ¶ó ÇÔ¼ö¸¦ ±×³É »ç¿ëÇÏÁö¸¸
+        // C++¿¡¼± ¾ø´Â ±â´ÉÀÌ¶ó Æ÷ÀÎÅÍ·Î ¸¸µë.
 
         const uint8 WheelRevolutionDataPresent = 0x01;
         const uint8 CrankRevolutionDataPresent = 0x02;
 
-        //cumulative wheel revo
+        //cumilative wheel revo
         uint32 currentWheelRevolutions = 0;
         //last wheel event time
         uint16 currentWheelEventTimestamp = 0;
@@ -599,9 +597,6 @@ void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTyp
             currentCrankEventTimestamp = (uint16_t)(*ptr) | ((uint16_t)(*(ptr + 1))) << 8;
         }
 
-        /*   UE_LOG(LogTemp, Warning, TEXT("wheel revo : %d    wheel time : %d    crank revo : %d   crank time : %d"),
-               currentWheelRevolutions, currentWheelEventTimestamp, currentCrankRevolutions, currentCrankEventTimestamp);*/
-
         //WheelRevolutions = currentWheelRevolutions;
         //WheelEventTimestamp = currentWheelEventTimestamp;
         //CrankRevolutions = currentCrankRevolutions;
@@ -627,10 +622,13 @@ void BluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime,
 
         m_mutex.Unlock();
     }
-    //else
-    //{
-    //    UE_LOG(LogTemp, Warning, TEXT("Set Failed cause of mutex"));
-    //}
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Set Failed cause of mutex"));
+    }
+
+    //UE_LOG(LogTemp, Warning, TEXT("Receiving"));
+
 }
 
 void BluetoothDataReceiver::GetCadenceData(int32& WheelRevo, int32& WheelTime, int32& CrankRevo, int32& CrankTime)
@@ -644,8 +642,8 @@ void BluetoothDataReceiver::GetCadenceData(int32& WheelRevo, int32& WheelTime, i
 
         m_mutex.Unlock();
     }
-    //else
-    //{
-    //    UE_LOG(LogTemp, Warning, TEXT("! Get Failed cause of mutex"));
-    //}
+    else
+    {
+        UE_LOG(LogTemp, Warning, TEXT("! Get Failed cause of mutex"));
+    }
 }

@@ -17,21 +17,28 @@ public:
 	// Sets default values for this actor's properties
 	ABluetoothDataReader();
 
-	BluetoothDataReceiver* DataReceiver;
+	TSharedPtr<BluetoothDataReceiver> DataReceiver;
 
 	FTimerHandle BluetoothReadTimer;
 
-	UPROPERTY(VisibleAnywhere, Category = "Bluetooth")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 	int32 Prev_WheelRevolutions = 0;
-	UPROPERTY(VisibleAnywhere, Category = "Bluetooth")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 	int32 Prev_WheelEventTimeStamp = 0;
-	UPROPERTY(VisibleAnywhere, Category = "Bluetooth")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 	int32 Prev_CrankRevolutions = 0;
-	UPROPERTY(VisibleAnywhere, Category = "Bluetooth")
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 	int32 Prev_CrankEventTimeStamp = 0;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float RPM;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
+	TArray<float> RevolutionsData;
+
+
+	//Buffer Size for Calculation.. Default is 10.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bluetooth", Meta = (ClampMin = 5, ClampMax = 30))
+		int32 RecordBufferSize = 10;
 
 protected:
 	// Called when the game starts or when spawned
