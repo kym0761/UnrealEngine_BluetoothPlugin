@@ -33,7 +33,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float RPM;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
-	TArray<float> RevolutionsData;
+	TArray<float> RPM_Data;
 
 
 	//Buffer Size for Calculation.. Default is 10.

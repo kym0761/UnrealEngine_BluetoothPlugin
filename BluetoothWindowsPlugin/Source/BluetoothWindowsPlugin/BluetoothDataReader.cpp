@@ -17,9 +17,9 @@ void ABluetoothDataReader::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	DataReceiver = MakeShareable(new BluetoothDataReceiver());
+	RPM_Data.Init(0, RecordBufferSize);
 
-	RevolutionsData.Init(0, RecordBufferSize);
+	DataReceiver = MakeShareable(new BluetoothDataReceiver());
 
 	GetWorldTimerManager().SetTimer(BluetoothReadTimer, this, &ABluetoothDataReader::ReadData, 0.75f, true, 1.0f);
 
@@ -70,8 +70,7 @@ void ABluetoothDataReader::ReadData()
 			//WheelData에 현재 기준 RPM을 기록하고, WheelData 평균을 실제 RPM이라고 추정한다.
 			//Bluetooth의 데이터 입력 주기를 조절할 수 없고
 			//너무 빨리 측정하면 current_CrankRevo - Prev_CrankRevo 의 값이 0이 되어 RPM이 순간 0이 되므로
-			//5~30개의 측정 값의 평균을 매겨 RPM을 추정하는 것이 바람직하다고 생각함.
-			//기본 기록 개수는 10
+			//약 10개의 측정 값의 평균을 매겨 RPM을 추정하는 것이 바람직하다고 생각함.
 
 			float current = 0;
 			if ((current_CT - Prev_CrankEventTimeStamp) != 0) //시간 값이 0이 되면 나누기 연산 실패
@@ -79,31 +78,31 @@ void ABluetoothDataReader::ReadData()
 				current = (current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f) * 60;
 			}
 			
-			//시간이나 회전 값이 uint16 값을 초과하면 측정된 값이 0이 되어 계산값이 -가 되는데 마이너스보다는 0값이 들어가는 것이 낫다고 판단.
+			//시간 uint16 값을 초과하면 0이 되어 측정값이 마이너스가 되는데 0값이 들어가는 것이 낫다고 판단.
 			if (current < 0.0f)
 			{
 				current = 0.0f;
 			}
 				
-			if (RevolutionsData.Num() < RecordBufferSize)
+			if (RPM_Data.Num() < RecordBufferSize)
 			{
-				RevolutionsData.Add(current);
+				RPM_Data.Add(current);
 			}
 			else
 			{
-				RevolutionsData.Add(current);
-				while (RevolutionsData.Num() > RecordBufferSize)
+				RPM_Data.Add(current);
+				while (RPM_Data.Num() > RecordBufferSize)
 				{
-					RevolutionsData.RemoveAt(0);
+					RPM_Data.RemoveAt(0);
 				}
 			}
 
 			//평균값 계산 후, 실제 RPM에 평균값을 대입함.
-			int32 num = RevolutionsData.Num();
+			int32 num = RPM_Data.Num();
 			float total = 0.0f;
-			for (int i = 0; i < RevolutionsData.Num(); i++)
+			for (int i = 0; i < num; i++)
 			{
-				total += RevolutionsData[i];
+				total += RPM_Data[i];
 			}
 
 			RPM = total / num;
