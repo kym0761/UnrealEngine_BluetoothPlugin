@@ -83,9 +83,15 @@ void BluetoothDataReceiver::Stop()
     }
 }
 
+void BluetoothDataReceiver::Exit()
+{
+
+}
+
 uint32 BluetoothDataReceiver::Run()
 {
-    FPlatformProcess::Sleep(0.03);
+    //Sleep 0.01
+    FPlatformProcess::Sleep(0.01);
 
     while (m_kill == false)
     {
@@ -114,7 +120,7 @@ uint32 BluetoothDataReceiver::Run()
             {
                 //디바이스가 존재하지 않으면, 다시 루프를 반복해서 디바이스를 찾을 때까지 반복함.
                 UE_LOG(LogTemp, Warning, TEXT("device can't find?"));
-                FPlatformProcess::Sleep(0.03);
+                //FPlatformProcess::Sleep(0.03);
                 continue;
             }
 
@@ -362,6 +368,7 @@ uint32 BluetoothDataReceiver::Run()
                 //중요. 파싱 데이터 코드는 여기서 실행될 것이다.
                 if (currGattChar->IsNotifiable) {
 
+                    //데이터가 바뀔 때만 이벤트가 동작한다.
                     BTH_LE_GATT_EVENT_TYPE EventType = CharacteristicValueChangedEvent;
 
                     BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION EventParameterIn;
@@ -380,7 +387,32 @@ uint32 BluetoothDataReceiver::Run()
 
                     }
 
-                    //UE_LOG(LogTemp, Warning, TEXT("Register OK"));
+                    UE_LOG(LogTemp, Warning, TEXT("Register OK"));
+
+                    //문제가 없는 동안은 계속 이벤트를 실행하게 한다.
+                    while (true)
+                    {
+                        if (m_pause)
+                        {
+                            UE_LOG(LogTemp, Warning, TEXT("break by m_pause"));
+                            break;
+                        }
+
+                        if (m_kill)
+                        {
+                            UE_LOG(LogTemp, Warning, TEXT("break by m_kill"));
+                            break;
+                        }
+
+                        if ((GetLastError() != NO_ERROR) && (GetLastError() != ERROR_NO_MORE_ITEMS))
+                        {
+                            UE_LOG(LogTemp, Warning, TEXT("break by error"));
+                            break;
+                        }
+                    }
+
+                    UE_LOG(LogTemp, Warning, TEXT("Escape"));
+
                 }
 
 
@@ -442,6 +474,7 @@ uint32 BluetoothDataReceiver::Run()
             //    continue;
             //}
 
+
             //데이터 파싱 이벤트 unregister.
             if (EventHandle != nullptr)
             {
@@ -457,14 +490,6 @@ uint32 BluetoothDataReceiver::Run()
             pCharBuffer = nullptr;
             free(pServiceBuffer);
             pServiceBuffer = nullptr;
-
-            if (GetLastError() != NO_ERROR &&
-                GetLastError() != ERROR_NO_MORE_ITEMS)
-            {
-                // Insert error handling here.
-                UE_LOG(LogTemp, Warning, TEXT("Error Handling?"));
-                return 1;
-            }
 
             //루프 재시작 위치
             if (!m_pause && !m_kill)
@@ -536,6 +561,8 @@ HANDLE BluetoothDataReceiver::GetBLEHandle(GUID AGuid)
 void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventType, PVOID EventOutParameter, PVOID Context)
 {
     PBLUETOOTH_GATT_VALUE_CHANGED_EVENT ValueChangedEventParameters = (PBLUETOOTH_GATT_VALUE_CHANGED_EVENT)EventOutParameter;
+
+    //UE_LOG(LogTemp, Warning, TEXT("Parsing"));
 
     HRESULT hr;
     if (0 == ValueChangedEventParameters->CharacteristicValue->DataSize) {
@@ -620,15 +647,14 @@ void BluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime,
         CrankRevolutions = InCrankRevo;
         CrankEventTimestamp = InCrankTime;
 
+        //UE_LOG(LogTemp, Warning, TEXT("Value Changed"));
+
         m_mutex.Unlock();
     }
     else
     {
         UE_LOG(LogTemp, Warning, TEXT("Set Failed cause of mutex"));
     }
-
-    //UE_LOG(LogTemp, Warning, TEXT("Receiving"));
-
 }
 
 void BluetoothDataReceiver::GetCadenceData(int32& WheelRevo, int32& WheelTime, int32& CrankRevo, int32& CrankTime)

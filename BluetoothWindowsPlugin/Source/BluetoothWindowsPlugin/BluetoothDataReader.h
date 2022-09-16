@@ -33,12 +33,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float RPM;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
-	TArray<float> RPM_Data;
+		float DataReadInterval;
 
-
-	//Buffer Size for Calculation.. Default is 10.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Bluetooth", Meta = (ClampMin = 5, ClampMax = 30))
-		int32 RecordBufferSize = 10;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
+		float RunTimer;
 
 protected:
 	// Called when the game starts or when spawned

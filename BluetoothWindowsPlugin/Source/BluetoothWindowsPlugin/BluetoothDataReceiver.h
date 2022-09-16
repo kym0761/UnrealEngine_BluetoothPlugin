@@ -43,10 +43,10 @@ public:
     bool IsThreadPaused();          // Function to check the state of the thread
 
     // FRunnable interface functions
-    virtual bool Init();
-    virtual uint32 Run();
-    virtual void Stop();
-
+    virtual bool Init() override;
+    virtual uint32 Run() override;
+    virtual void Stop() override;
+    virtual void Exit() override;
     // Bluetooth Windows API functions
     HANDLE GetBLEHandle(__in GUID AGuid);
 

@@ -10,18 +10,17 @@ ABluetoothDataReader::ABluetoothDataReader()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	DataReadInterval = 0.01f;
 }
 
 // Called when the game starts or when spawned
 void ABluetoothDataReader::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	RPM_Data.Init(0, RecordBufferSize);
 
 	DataReceiver = MakeShareable(new BluetoothDataReceiver());
 
-	GetWorldTimerManager().SetTimer(BluetoothReadTimer, this, &ABluetoothDataReader::ReadData, 0.75f, true, 1.0f);
+	GetWorldTimerManager().SetTimer(BluetoothReadTimer, this, &ABluetoothDataReader::ReadData, DataReadInterval, true, 1.0f);
 
 }
 
@@ -48,6 +47,8 @@ void ABluetoothDataReader::ReadData()
 {
 	if (DataReceiver.IsValid())
 	{
+		RunTimer -= DataReadInterval;
+
 		int32 current_WR = 0;
 		int32 current_WT = 0;
 		int32 current_CR = 0;
@@ -55,7 +56,7 @@ void ABluetoothDataReader::ReadData()
 
 		DataReceiver->GetCadenceData(current_WR, current_WT, current_CR, current_CT);
 
-		//시작할 때는 데이터 값만 가져오고 끝낸다.
+		//처음 시작할 때 최초 초기화.
 		if (Prev_WheelRevolutions == 0 && Prev_WheelEventTimeStamp == 0 && Prev_CrankRevolutions == 0 && Prev_CrankEventTimeStamp == 0)
 		{
 			Prev_WheelRevolutions = current_WR;
@@ -67,51 +68,59 @@ void ABluetoothDataReader::ReadData()
 		}
 		else
 		{
-			//WheelData에 현재 기준 RPM을 기록하고, WheelData 평균을 실제 RPM이라고 추정한다.
-			//Bluetooth의 데이터 입력 주기를 조절할 수 없고
-			//너무 빨리 측정하면 current_CrankRevo - Prev_CrankRevo 의 값이 0이 되어 RPM이 순간 0이 되므로
-			//약 10개의 측정 값의 평균을 매겨 RPM을 추정하는 것이 바람직하다고 생각함.
 
-			float current = 0;
+			float current = 0.0f;
 			if ((current_CT - Prev_CrankEventTimeStamp) != 0) //시간 값이 0이 되면 나누기 연산 실패
 			{
-				current = (current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f) * 60;
-			}
-			
-			//시간 uint16 값을 초과하면 0이 되어 측정값이 마이너스가 되는데 0값이 들어가는 것이 낫다고 판단.
-			if (current < 0.0f)
-			{
-				current = 0.0f;
-			}
-				
-			if (RPM_Data.Num() < RecordBufferSize)
-			{
-				RPM_Data.Add(current);
-			}
-			else
-			{
-				RPM_Data.Add(current);
-				while (RPM_Data.Num() > RecordBufferSize)
-				{
-					RPM_Data.RemoveAt(0);
-				}
+				current = (float)(current_CR - Prev_CrankRevolutions) / ((float)(current_CT - Prev_CrankEventTimeStamp) / 1024.0f) * 60.0f;
 			}
 
-			//평균값 계산 후, 실제 RPM에 평균값을 대입함.
-			int32 num = RPM_Data.Num();
-			float total = 0.0f;
-			for (int i = 0; i < num; i++)
-			{
-				total += RPM_Data[i];
-			}
-
-			RPM = total / num;
-			
-			//계산기 끝나면 현재 값을 prev값에 넣어주고 다음 계산을 함.
+			//현재 값을 prev값에 넣어줌
 			Prev_WheelRevolutions = current_WR;
 			Prev_WheelEventTimeStamp = current_WT;
 			Prev_CrankRevolutions = current_CR;
 			Prev_CrankEventTimeStamp = current_CT;
+
+
+			//계산된 값이 양수면 runtimer를 2로 세팅
+			if (current > 0.0f)
+			{
+				//UE_LOG(LogTemp, Warning, TEXT("runner set"));
+				RunTimer = 1.5f;
+			}
+
+			//시간이 uint16 값을 초과하면 측정값이 마이너스가 되니 초기화
+			if (current < 0.0f)
+			{
+				current = 0.0f;
+
+				Prev_WheelRevolutions = 0;
+				Prev_WheelEventTimeStamp = 0;
+				Prev_CrankRevolutions = 0;
+				Prev_CrankEventTimeStamp = 0;
+
+				return;
+			}
+			
+			//값이 변하지 않았으므로 무시함.
+			if (RunTimer > 0.0f && FMath::IsNearlyEqual(current, 0.0f))
+			{
+				//UE_LOG(LogTemp, Warning, TEXT("ignore"));
+				return;
+			}
+
+			//runtimer가 음수가 됐다면 current를 0으로 세팅하고 0으로 interpolate하도록 함.
+			if (RunTimer <= 0.0f)
+			{
+				//UE_LOG(LogTemp, Warning, TEXT("runner is not ok"));
+				current = 0.0f;
+			}
+
+			//RPM을 Current에 interpolate함.
+			RPM = FMath::FInterpTo(RPM, current, DataReadInterval, 0.75f);
+			//UE_LOG(LogTemp, Warning, TEXT("interpolate"));
+
+
 		}
 
 	}
