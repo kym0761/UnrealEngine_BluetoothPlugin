@@ -39,7 +39,6 @@ void ABluetoothDataReader::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		DataReceiver->EnsureCompletion();
 	}
 
-
 	Super::EndPlay(EndPlayReason);
 
 }
@@ -77,7 +76,6 @@ void ABluetoothDataReader::ReadData()
 		else
 		{
 			float current = 0.0f;
-			//CurrentRPM = 0.0f;
 			if ((current_CT - Prev_CrankEventTimeStamp) != 0) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
 			{
 				current = ((float)(current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f)) * 60.0f;
@@ -89,26 +87,24 @@ void ABluetoothDataReader::ReadData()
 			Prev_CrankRevolutions = current_CR;
 			Prev_CrankEventTimeStamp = current_CT;
 
-			//계산된 값이 0 이상이면 뛰고 있다 판단하여 runtimer를 Set함.
+			//계산된 값이 0을 넘는다면 뛰고 있다 판단하여 runtimer를 Set함.
 			if (current > 0.0f)
 			{
 				RunTimer = TimerSet;
 			}
 
-
 			if (RunTimer > 0.0f)
 			{
-				//Runtimer가 활성화 중인데도, current가 0이 되었다면 CurrentRPM 값이 변하지안게 무시함.
+														//Runtimer가 활성화 중인데도, current가 0이 되었다면 CurrentRPM 값이 변하지 않게 무시함.
 				if (FMath::IsNearlyEqual(current, 0.0f))
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("ignore"));
-
 				}
-				else if (current > 0.0f)//계산된 값이 양수면 CurrentRPM을 바꿔줌.
+				else if (current > 0.0f)				//계산된 값이 양수면 CurrentRPM을 바꿔줌.
 				{
 					CurrentRPM = current;
 				}
-				else//시간이 uint16 값을 초과하면 0으로 돌아가면서 측정값이 마이너스가 되니 초기화
+				else									//시간이 uint16 값을 초과하면 0으로 돌아가면서 측정값이 마이너스가 되니 초기화
 				{
 					CurrentRPM = 0.0f;
 
@@ -116,19 +112,14 @@ void ABluetoothDataReader::ReadData()
 					Prev_WheelEventTimeStamp = 0;
 					Prev_CrankRevolutions = 0;
 					Prev_CrankEventTimeStamp = 0;
-
 				}
 			}
 			else if (RunTimer <= 0.0f) //runtimer가 음수가 됐다면 currentRPM을 0으로 세팅하고 interpolate하도록 함.
 			{
-				//UE_LOG(LogTemp, Warning, TEXT("runner is not ok"));
-
 				CurrentRPM = 0.0f;
 			}
 
 			//RPM을 CurrentRPM에 interpolate함.
-			//UE_LOG(LogTemp, Warning, TEXT("interpolate"));
-
 			if (current > 0.0f && RunTimer > 0.0f) // 기본 interpolate
 			{
 				RPM = FMath::FInterpTo(RPM, CurrentRPM, DataReadInterval, 2.0f);
@@ -142,7 +133,6 @@ void ABluetoothDataReader::ReadData()
 				RPM = FMath::FInterpTo(RPM, CurrentRPM, DataReadInterval, 0.5f);
 			}
 			
-
 		}
 
 	}

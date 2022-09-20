@@ -30,13 +30,15 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 	int32 Prev_CrankEventTimeStamp = 0;
 
+	//½ÇÁ¦ RPM
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float RPM;
+	//Interpolation Target
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float CurrentRPM;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float DataReadInterval;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float RunTimer;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Bluetooth")
