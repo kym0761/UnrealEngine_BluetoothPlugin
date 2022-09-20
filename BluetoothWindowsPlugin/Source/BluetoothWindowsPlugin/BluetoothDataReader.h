@@ -33,10 +33,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float RPM;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
+		float CurrentRPM;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float DataReadInterval;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float RunTimer;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Bluetooth")
+		float TimerSet;
 
 protected:
 	// Called when the game starts or when spawned

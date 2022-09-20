@@ -11,6 +11,7 @@ ABluetoothDataReader::ABluetoothDataReader()
 	PrimaryActorTick.bCanEverTick = true;
 
 	DataReadInterval = 0.01f;
+	TimerSet = 2.0f;
 }
 
 // Called when the game starts or when spawned
@@ -20,7 +21,14 @@ void ABluetoothDataReader::BeginPlay()
 
 	DataReceiver = MakeShareable(new BluetoothDataReceiver());
 
-	GetWorldTimerManager().SetTimer(BluetoothReadTimer, this, &ABluetoothDataReader::ReadData, DataReadInterval, true, 1.0f);
+	GetWorldTimerManager().SetTimer(
+		BluetoothReadTimer, 
+		this, 
+		&ABluetoothDataReader::ReadData,
+		DataReadInterval,
+		true, 
+		1.0f //First Delay
+	);
 
 }
 
@@ -68,61 +76,79 @@ void ABluetoothDataReader::ReadData()
 		}
 		else
 		{
-
 			float current = 0.0f;
-			if ((current_CT - Prev_CrankEventTimeStamp) != 0) //시간 값이 0이 되면 나누기 연산 실패
+			//CurrentRPM = 0.0f;
+			if ((current_CT - Prev_CrankEventTimeStamp) != 0) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
 			{
-				current = (float)(current_CR - Prev_CrankRevolutions) / ((float)(current_CT - Prev_CrankEventTimeStamp) / 1024.0f) * 60.0f;
+				current = ((float)(current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f)) * 60.0f;
 			}
 
-			//현재 값을 prev값에 넣어줌
+			//계산이 완료됐다면 현재 값을 prev값에 넣어줌
 			Prev_WheelRevolutions = current_WR;
 			Prev_WheelEventTimeStamp = current_WT;
 			Prev_CrankRevolutions = current_CR;
 			Prev_CrankEventTimeStamp = current_CT;
 
-
-			//계산된 값이 양수면 runtimer를 2로 세팅
+			//계산된 값이 0 이상이면 뛰고 있다 판단하여 runtimer를 Set함.
 			if (current > 0.0f)
 			{
-				//UE_LOG(LogTemp, Warning, TEXT("runner set"));
-				RunTimer = 1.5f;
+				RunTimer = TimerSet;
 			}
 
-			//시간이 uint16 값을 초과하면 측정값이 마이너스가 되니 초기화
-			if (current < 0.0f)
+
+			if (RunTimer > 0.0f)
 			{
-				current = 0.0f;
+				//Runtimer가 활성화 중인데도, current가 0이 되었다면 CurrentRPM 값이 변하지안게 무시함.
+				if (FMath::IsNearlyEqual(current, 0.0f))
+				{
+					//UE_LOG(LogTemp, Warning, TEXT("ignore"));
 
-				Prev_WheelRevolutions = 0;
-				Prev_WheelEventTimeStamp = 0;
-				Prev_CrankRevolutions = 0;
-				Prev_CrankEventTimeStamp = 0;
+				}
+				else if (current > 0.0f)//계산된 값이 양수면 CurrentRPM을 바꿔줌.
+				{
+					CurrentRPM = current;
+				}
+				else//시간이 uint16 값을 초과하면 0으로 돌아가면서 측정값이 마이너스가 되니 초기화
+				{
+					CurrentRPM = 0.0f;
 
-				return;
+					Prev_WheelRevolutions = 0;
+					Prev_WheelEventTimeStamp = 0;
+					Prev_CrankRevolutions = 0;
+					Prev_CrankEventTimeStamp = 0;
+
+				}
 			}
-			
-			//값이 변하지 않았으므로 무시함.
-			if (RunTimer > 0.0f && FMath::IsNearlyEqual(current, 0.0f))
-			{
-				//UE_LOG(LogTemp, Warning, TEXT("ignore"));
-				return;
-			}
-
-			//runtimer가 음수가 됐다면 current를 0으로 세팅하고 0으로 interpolate하도록 함.
-			if (RunTimer <= 0.0f)
+			else if (RunTimer <= 0.0f) //runtimer가 음수가 됐다면 currentRPM을 0으로 세팅하고 interpolate하도록 함.
 			{
 				//UE_LOG(LogTemp, Warning, TEXT("runner is not ok"));
-				current = 0.0f;
+
+				CurrentRPM = 0.0f;
 			}
 
-			//RPM을 Current에 interpolate함.
-			RPM = FMath::FInterpTo(RPM, current, DataReadInterval, 0.75f);
+			//RPM을 CurrentRPM에 interpolate함.
 			//UE_LOG(LogTemp, Warning, TEXT("interpolate"));
 
+			if (current > 0.0f && RunTimer > 0.0f) // 기본 interpolate
+			{
+				RPM = FMath::FInterpTo(RPM, CurrentRPM, DataReadInterval, 2.0f);
+			}
+			else if (FMath::IsNearlyEqual(current, 0.0f) && RunTimer > 0.0f) // runtimer가 reset이 되지 않았지만 currentRPM이 0이 됐다면 아주 살짝씩 0으로 줄인다.
+			{
+				RPM = FMath::FInterpTo(RPM, CurrentRPM, DataReadInterval, 0.1f);
+			}
+			else //runtimer가 reset되면 빠르게 0으로 줄인다.
+			{
+				RPM = FMath::FInterpTo(RPM, CurrentRPM, DataReadInterval, 0.5f);
+			}
+			
 
 		}
 
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("DataReceiver is not Valid.."));
 	}
 
 }

@@ -85,16 +85,23 @@ void BluetoothDataReceiver::Stop()
 
 void BluetoothDataReceiver::Exit()
 {
-
+    
 }
 
 uint32 BluetoothDataReceiver::Run()
 {
-    //Sleep 0.01
+    //Sleep 0.01 first
     FPlatformProcess::Sleep(0.01);
 
-    while (m_kill == false)
+    while (true)
     {
+        //kill 상태가 되면 빠져나온다.
+        if (m_kill)
+        {
+            break;
+        }
+
+        //pause 상태면 멈추고 kill상태로 전환되면 빠져나온다.
         if (m_pause)
         {
             // FEvent->Wait() will sleep the thread until given a signal Trigger()
@@ -102,403 +109,432 @@ uint32 BluetoothDataReceiver::Run()
 
             if (m_kill)
             {
-                return 0;
+                break;
             }
+        }
+
+
+
+        //Step 1: find the BLE device handle from its GUID
+        //SEE UUID in Header. it's Bluetooth UUID
+        GUID AGuid;
+
+        CLSIDFromString(TEXT(TO_SEARCH_DEVICE_UUID), &AGuid);
+        // get the handle 
+        HANDLE hLEDevice = GetBLEHandle(AGuid);
+
+        if (!hLEDevice)
+        {
+            //디바이스가 존재하지 않으면, 다시 루프를 반복해서 디바이스를 찾을 때까지 반복함.
+            UE_LOG(LogTemp, Warning, TEXT("device can't find.."));
+            FPlatformProcess::Sleep(1.0f);
+            continue;
+        }
+
+        //Step 2: Get a list of services that the device advertises
+        // first send 0,NULL as the parameters to BluetoothGATTServices inorder to get the number of
+        // services in serviceBufferCount
+        USHORT serviceBufferCount;
+        ////////////////////////////////////////////////////////////////////////////
+        // Determine Services Buffer Size
+        ////////////////////////////////////////////////////////////////////////////
+
+        HRESULT hr = BluetoothGATTGetServices(
+            hLEDevice,
+            0,
+            NULL,
+            &serviceBufferCount,
+            BLUETOOTH_GATT_FLAG_NONE);
+
+        if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
+
+        }
+
+        // my custom1
+        if (serviceBufferCount == 0)
+        {
+            //서비스를 찾기 못했으면 어차피 다음 내용이 의미 없으므로 반복.
+            UE_LOG(LogTemp, Warning, TEXT("service Can't Find.."));
+            FPlatformProcess::Sleep(1.0f);
+            continue;
+        }
+        // my custom1 end
+
+        PBTH_LE_GATT_SERVICE pServiceBuffer = (PBTH_LE_GATT_SERVICE)
+            malloc(sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
+
+        if (NULL == pServiceBuffer) {
 
         }
         else {
+            RtlZeroMemory(pServiceBuffer,
+                sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
+        }
 
-            //Step 1: find the BLE device handle from its GUID
-            //SEE UUID in Header. it's Bluetooth UUID
-            GUID AGuid;
+        ////////////////////////////////////////////////////////////////////////////
+        // Retrieve Services
+        ////////////////////////////////////////////////////////////////////////////
 
-            CLSIDFromString(TEXT(TO_SEARCH_DEVICE_UUID), &AGuid);
-            // get the handle 
-            HANDLE hLEDevice = GetBLEHandle(AGuid);
+        USHORT numServices;
+        hr = BluetoothGATTGetServices(
+            hLEDevice,
+            serviceBufferCount,
+            pServiceBuffer,
+            &numServices,
+            BLUETOOTH_GATT_FLAG_NONE);
 
-            if (!hLEDevice)
-            {
-                //디바이스가 존재하지 않으면, 다시 루프를 반복해서 디바이스를 찾을 때까지 반복함.
-                UE_LOG(LogTemp, Warning, TEXT("device can't find?"));
-                //FPlatformProcess::Sleep(0.03);
-                continue;
-            }
+        if (S_OK != hr) {
+            UE_LOG(LogTemp, Warning, TEXT("hr error1"));
+        }
 
-            //Step 2: Get a list of services that the device advertises
-            // first send 0,NULL as the parameters to BluetoothGATTServices inorder to get the number of
-            // services in serviceBufferCount
-            USHORT serviceBufferCount;
-            ////////////////////////////////////////////////////////////////////////////
-            // Determine Services Buffer Size
-            ////////////////////////////////////////////////////////////////////////////
 
-            HRESULT hr = BluetoothGATTGetServices(
-                hLEDevice,
-                0,
-                NULL,
-                &serviceBufferCount,
-                BLUETOOTH_GATT_FLAG_NONE);
+        //Step 3: now get the list of charactersitics. note how the pServiceBuffer is required from step 2
+        ////////////////////////////////////////////////////////////////////////////
+        // Determine Characteristic Buffer Size
+        ////////////////////////////////////////////////////////////////////////////
 
-            if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
+        USHORT charBufferSize;
+        hr = BluetoothGATTGetCharacteristics(
+            hLEDevice,
+            pServiceBuffer,
+            0,
+            NULL,
+            &charBufferSize,
+            BLUETOOTH_GATT_FLAG_NONE);
 
-            }
+        //set the appropriate callback function when the descriptor change value
+        TArray<BLUETOOTH_GATT_EVENT_HANDLE> event_Handle_Arr;
 
-            PBTH_LE_GATT_SERVICE pServiceBuffer = (PBTH_LE_GATT_SERVICE)
-                malloc(sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
+        if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
 
-            if (NULL == pServiceBuffer) {
+        }
+
+        PBTH_LE_GATT_CHARACTERISTIC pCharBuffer = NULL;
+        if (charBufferSize > 0) {
+            pCharBuffer = (PBTH_LE_GATT_CHARACTERISTIC)
+                malloc(charBufferSize * sizeof(BTH_LE_GATT_CHARACTERISTIC));
+
+            if (NULL == pCharBuffer) {
 
             }
             else {
-                RtlZeroMemory(pServiceBuffer,
-                    sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
+                RtlZeroMemory(pCharBuffer,
+                    charBufferSize * sizeof(BTH_LE_GATT_CHARACTERISTIC));
             }
 
             ////////////////////////////////////////////////////////////////////////////
-            // Retrieve Services
+            // Retrieve Characteristics
             ////////////////////////////////////////////////////////////////////////////
-
-            USHORT numServices;
-            hr = BluetoothGATTGetServices(
-                hLEDevice,
-                serviceBufferCount,
-                pServiceBuffer,
-                &numServices,
-                BLUETOOTH_GATT_FLAG_NONE);
-
-            if (S_OK != hr) {
-
-            }
-
-
-            //Step 3: now get the list of charactersitics. note how the pServiceBuffer is required from step 2
-            ////////////////////////////////////////////////////////////////////////////
-            // Determine Characteristic Buffer Size
-            ////////////////////////////////////////////////////////////////////////////
-
-            USHORT charBufferSize;
+            USHORT numChars;
             hr = BluetoothGATTGetCharacteristics(
                 hLEDevice,
                 pServiceBuffer,
-                0,
-                NULL,
-                &charBufferSize,
+                charBufferSize,
+                pCharBuffer,
+                &numChars,
                 BLUETOOTH_GATT_FLAG_NONE);
 
-            //set the appropriate callback function when the descriptor change value
-            BLUETOOTH_GATT_EVENT_HANDLE EventHandle = nullptr;
+            if (S_OK != hr) {
+                UE_LOG(LogTemp, Warning, TEXT("hr error2"));
+            }
+
+            if (numChars != charBufferSize) {
+
+            }
+
+        }
+
+
+        //Step 4: now get the list of descriptors. note how the pCharBuffer is required from step 3
+        //descriptors are required as we descriptors that are notification based will have to be written
+        //once IsSubcribeToNotification set to true, we set the appropriate callback function
+        //need for setting descriptors for notification according to
+        //http://social.msdn.microsoft.com/Forums/en-US/11d3a7ce-182b-4190-bf9d-64fefc3328d9/windows-bluetooth-le-apis-event-callbacks?forum=wdk
+        PBTH_LE_GATT_CHARACTERISTIC currGattChar;
+        for (int ii = 0; ii < charBufferSize; ii++) {
+            currGattChar = &pCharBuffer[ii];
+            //USHORT charValueDataSize;
+            //PBTH_LE_GATT_CHARACTERISTIC_VALUE pCharValueBuffer;
+
+
+            ///////////////////////////////////////////////////////////////////////////
+            // Determine Descriptor Buffer Size
+            ////////////////////////////////////////////////////////////////////////////
+            USHORT descriptorBufferSize;
+            hr = BluetoothGATTGetDescriptors(
+                hLEDevice,
+                currGattChar,
+                0,
+                NULL,
+                &descriptorBufferSize,
+                BLUETOOTH_GATT_FLAG_NONE);
 
             if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
 
             }
 
-            PBTH_LE_GATT_CHARACTERISTIC pCharBuffer = NULL;
-            if (charBufferSize > 0) {
-                pCharBuffer = (PBTH_LE_GATT_CHARACTERISTIC)
-                    malloc(charBufferSize * sizeof(BTH_LE_GATT_CHARACTERISTIC));
+            PBTH_LE_GATT_DESCRIPTOR pDescriptorBuffer;
+            if (descriptorBufferSize > 0) {
+                pDescriptorBuffer = (PBTH_LE_GATT_DESCRIPTOR)
+                    malloc(descriptorBufferSize
+                        * sizeof(BTH_LE_GATT_DESCRIPTOR));
 
-                if (NULL == pCharBuffer) {
+                if (NULL == pDescriptorBuffer) {
 
                 }
                 else {
-                    RtlZeroMemory(pCharBuffer,
-                        charBufferSize * sizeof(BTH_LE_GATT_CHARACTERISTIC));
+                    RtlZeroMemory(pDescriptorBuffer, descriptorBufferSize);
                 }
 
                 ////////////////////////////////////////////////////////////////////////////
-                // Retrieve Characteristics
+                // Retrieve Descriptors
                 ////////////////////////////////////////////////////////////////////////////
-                USHORT numChars;
-                hr = BluetoothGATTGetCharacteristics(
-                    hLEDevice,
-                    pServiceBuffer,
-                    charBufferSize,
-                    pCharBuffer,
-                    &numChars,
-                    BLUETOOTH_GATT_FLAG_NONE);
 
-                if (S_OK != hr) {
-
-                }
-
-                if (numChars != charBufferSize) {
-
-                }
-
-            }
-
-
-            //Step 4: now get the list of descriptors. note how the pCharBuffer is required from step 3
-            //descriptors are required as we descriptors that are notification based will have to be written
-            //once IsSubcribeToNotification set to true, we set the appropriate callback function
-            //need for setting descriptors for notification according to
-            //http://social.msdn.microsoft.com/Forums/en-US/11d3a7ce-182b-4190-bf9d-64fefc3328d9/windows-bluetooth-le-apis-event-callbacks?forum=wdk
-            PBTH_LE_GATT_CHARACTERISTIC currGattChar;
-            for (int ii = 0; ii < charBufferSize; ii++) {
-                currGattChar = &pCharBuffer[ii];
-                //USHORT charValueDataSize;
-                //PBTH_LE_GATT_CHARACTERISTIC_VALUE pCharValueBuffer;
-
-
-                ///////////////////////////////////////////////////////////////////////////
-                // Determine Descriptor Buffer Size
-                ////////////////////////////////////////////////////////////////////////////
-                USHORT descriptorBufferSize;
+                USHORT numDescriptors;
                 hr = BluetoothGATTGetDescriptors(
                     hLEDevice,
                     currGattChar,
-                    0,
-                    NULL,
-                    &descriptorBufferSize,
+                    descriptorBufferSize,
+                    pDescriptorBuffer,
+                    &numDescriptors,
                     BLUETOOTH_GATT_FLAG_NONE);
 
-                if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
+                if (S_OK != hr) {
+                    UE_LOG(LogTemp, Warning, TEXT("hr error3"));
+                }
+
+                if (numDescriptors != descriptorBufferSize) {
 
                 }
 
-                PBTH_LE_GATT_DESCRIPTOR pDescriptorBuffer;
-                if (descriptorBufferSize > 0) {
-                    pDescriptorBuffer = (PBTH_LE_GATT_DESCRIPTOR)
-                        malloc(descriptorBufferSize
-                            * sizeof(BTH_LE_GATT_DESCRIPTOR));
+                for (int kk = 0; kk < numDescriptors; kk++) {
+                    PBTH_LE_GATT_DESCRIPTOR  currGattDescriptor = &pDescriptorBuffer[kk];
+                    ////////////////////////////////////////////////////////////////////////////
+                    // Determine Descriptor Value Buffer Size
+                    ////////////////////////////////////////////////////////////////////////////
+                    USHORT descValueDataSize;
+                    hr = BluetoothGATTGetDescriptorValue(
+                        hLEDevice,
+                        currGattDescriptor,
+                        0,
+                        NULL,
+                        &descValueDataSize,
+                        BLUETOOTH_GATT_FLAG_NONE);
 
-                    if (NULL == pDescriptorBuffer) {
+                    if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
+
+                    }
+
+                    PBTH_LE_GATT_DESCRIPTOR_VALUE pDescValueBuffer = (PBTH_LE_GATT_DESCRIPTOR_VALUE)malloc(descValueDataSize);
+
+                    if (NULL == pDescValueBuffer) {
 
                     }
                     else {
-                        RtlZeroMemory(pDescriptorBuffer, descriptorBufferSize);
+                        RtlZeroMemory(pDescValueBuffer, descValueDataSize);
                     }
 
                     ////////////////////////////////////////////////////////////////////////////
-                    // Retrieve Descriptors
+                    // Retrieve the Descriptor Value
                     ////////////////////////////////////////////////////////////////////////////
 
-                    USHORT numDescriptors;
-                    hr = BluetoothGATTGetDescriptors(
+                    hr = BluetoothGATTGetDescriptorValue(
                         hLEDevice,
-                        currGattChar,
-                        descriptorBufferSize,
-                        pDescriptorBuffer,
-                        &numDescriptors,
+                        currGattDescriptor,
+                        (ULONG)descValueDataSize,
+                        pDescValueBuffer,
+                        NULL,
                         BLUETOOTH_GATT_FLAG_NONE);
-
                     if (S_OK != hr) {
-
+                        UE_LOG(LogTemp, Warning, TEXT("hr error4"));
                     }
+                    //you may also get a descriptor that is read (and not notify) andi am guessing the attribute handle is out of limits
+                    // we set all descriptors that are notifiable to notify us via IsSubstcibeToNotification
+                    if (currGattDescriptor->AttributeHandle < 255) {
+                        BTH_LE_GATT_DESCRIPTOR_VALUE newValue;
 
-                    if (numDescriptors != descriptorBufferSize) {
+                        RtlZeroMemory(&newValue, sizeof(newValue));
 
-                    }
+                        newValue.DescriptorType = ClientCharacteristicConfiguration;
+                        newValue.ClientCharacteristicConfiguration.IsSubscribeToNotification = 1;
 
-                    for (int kk = 0; kk < numDescriptors; kk++) {
-                        PBTH_LE_GATT_DESCRIPTOR  currGattDescriptor = &pDescriptorBuffer[kk];
-                        ////////////////////////////////////////////////////////////////////////////
-                        // Determine Descriptor Value Buffer Size
-                        ////////////////////////////////////////////////////////////////////////////
-                        USHORT descValueDataSize;
-                        hr = BluetoothGATTGetDescriptorValue(
+                        hr = BluetoothGATTSetDescriptorValue(
                             hLEDevice,
                             currGattDescriptor,
-                            0,
-                            NULL,
-                            &descValueDataSize,
-                            BLUETOOTH_GATT_FLAG_NONE);
-
-                        if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
-
-                        }
-
-                        PBTH_LE_GATT_DESCRIPTOR_VALUE pDescValueBuffer = (PBTH_LE_GATT_DESCRIPTOR_VALUE)malloc(descValueDataSize);
-
-                        if (NULL == pDescValueBuffer) {
-
-                        }
-                        else {
-                            RtlZeroMemory(pDescValueBuffer, descValueDataSize);
-                        }
-
-                        ////////////////////////////////////////////////////////////////////////////
-                        // Retrieve the Descriptor Value
-                        ////////////////////////////////////////////////////////////////////////////
-
-                        hr = BluetoothGATTGetDescriptorValue(
-                            hLEDevice,
-                            currGattDescriptor,
-                            (ULONG)descValueDataSize,
-                            pDescValueBuffer,
-                            NULL,
+                            &newValue,
                             BLUETOOTH_GATT_FLAG_NONE);
                         if (S_OK != hr) {
-
+                            UE_LOG(LogTemp, Warning, TEXT("hr error5"));
                         }
-                        //you may also get a descriptor that is read (and not notify) andi am guessing the attribute handle is out of limits
-                        // we set all descriptors that are notifiable to notify us via IsSubstcibeToNotification
-                        if (currGattDescriptor->AttributeHandle < 255) {
-                            BTH_LE_GATT_DESCRIPTOR_VALUE newValue;
-
-                            RtlZeroMemory(&newValue, sizeof(newValue));
-
-                            newValue.DescriptorType = ClientCharacteristicConfiguration;
-                            newValue.ClientCharacteristicConfiguration.IsSubscribeToNotification = 1;
-
-                            hr = BluetoothGATTSetDescriptorValue(
-                                hLEDevice,
-                                currGattDescriptor,
-                                &newValue,
-                                BLUETOOTH_GATT_FLAG_NONE);
-                            if (S_OK != hr) {
-
-                            }
-                            else {
-
-                            }
+                        else {
 
                         }
 
-                        free(pDescValueBuffer);
-                        pDescValueBuffer = nullptr;
                     }
 
+                    free(pDescValueBuffer);
+                    pDescValueBuffer = nullptr;
                 }
 
-
-                ////set the appropriate callback function when the descriptor change value
-                //BLUETOOTH_GATT_EVENT_HANDLE EventHandle;
-
-                //중요. 파싱 데이터 코드는 여기서 실행될 것이다.
-                if (currGattChar->IsNotifiable) {
-
-                    //데이터가 바뀔 때만 이벤트가 동작한다.
-                    BTH_LE_GATT_EVENT_TYPE EventType = CharacteristicValueChangedEvent;
-
-                    BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION EventParameterIn;
-                    EventParameterIn.Characteristics[0] = *currGattChar;
-                    EventParameterIn.NumCharacteristics = 1;
-                    hr = BluetoothGATTRegisterEvent(
-                        hLEDevice,
-                        EventType,
-                        &EventParameterIn,
-                        ParsingBluetoothData,
-                        this,
-                        &EventHandle,
-                        BLUETOOTH_GATT_FLAG_NONE);
-
-                    if (S_OK != hr) {
-
-                    }
-
-                    UE_LOG(LogTemp, Warning, TEXT("Register OK"));
-
-                    //문제가 없는 동안은 계속 이벤트를 실행하게 한다.
-                    while (true)
-                    {
-                        if (m_pause)
-                        {
-                            UE_LOG(LogTemp, Warning, TEXT("break by m_pause"));
-                            break;
-                        }
-
-                        if (m_kill)
-                        {
-                            UE_LOG(LogTemp, Warning, TEXT("break by m_kill"));
-                            break;
-                        }
-
-                        if ((GetLastError() != NO_ERROR) && (GetLastError() != ERROR_NO_MORE_ITEMS))
-                        {
-                            UE_LOG(LogTemp, Warning, TEXT("break by error"));
-                            break;
-                        }
-                    }
-
-                    UE_LOG(LogTemp, Warning, TEXT("Escape"));
-
-                }
-
-
-                //if (currGattChar->IsReadable) {//currGattChar->IsReadable
-                //                               ////////////////////////////////////////////////////////////////////////////
-                //                               // Determine Characteristic Value Buffer Size
-                //                               ////////////////////////////////////////////////////////////////////////////
-                //    hr = BluetoothGATTGetCharacteristicValue(
-                //        hLEDevice,
-                //        currGattChar,
-                //        0,
-                //        NULL,
-                //        &charValueDataSize,
-                //        BLUETOOTH_GATT_FLAG_NONE);
-
-                //    if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
-
-                //    }
-
-                //    pCharValueBuffer = (PBTH_LE_GATT_CHARACTERISTIC_VALUE)malloc(charValueDataSize);
-
-                //    if (NULL == pCharValueBuffer) {
-
-                //    }
-                //    else {
-                //        RtlZeroMemory(pCharValueBuffer, charValueDataSize);
-                //    }
-
-                //    ////////////////////////////////////////////////////////////////////////////
-                //    // Retrieve the Characteristic Value
-                //    ////////////////////////////////////////////////////////////////////////////
-
-                //    hr = BluetoothGATTGetCharacteristicValue(
-                //        hLEDevice,
-                //        currGattChar,
-                //        (ULONG)charValueDataSize,
-                //        pCharValueBuffer,
-                //        NULL,
-                //        BLUETOOTH_GATT_FLAG_NONE);
-
-                //    if (S_OK != hr) {
-
-                //    }
-
-
-                //    // Free before going to next iteration, or memory leak.
-                //    free(pCharValueBuffer);
-                //    pCharValueBuffer = NULL;
-                //}
-
-               
             }
 
-            //// Go into an inf loop that sleeps. you will ideally see notifications from the Cadence device
-            //while (!m_pause && !m_kill)
-            //{
-            //    //prevHeartRate = heartRate;
-            //    Sleep(1000);
-            //    continue;
+            ////set the appropriate callback function when the descriptor change value
+            //BLUETOOTH_GATT_EVENT_HANDLE EventHandle;
+
+            BLUETOOTH_GATT_EVENT_HANDLE EventHandle;
+
+            //중요. 파싱 데이터 코드는 여기서 실행될 것이다.
+            if (currGattChar->IsNotifiable) {
+
+                //데이터가 바뀔 때만 이벤트가 동작한다.
+                BTH_LE_GATT_EVENT_TYPE EventType = CharacteristicValueChangedEvent;
+
+                // PFNBLUETOOTH_GATT_EVENT_CALLBACK callback = this->ParsingBluetoothData;
+
+                BLUETOOTH_GATT_VALUE_CHANGED_EVENT_REGISTRATION EventParameterIn;
+                EventParameterIn.Characteristics[0] = *currGattChar;
+                EventParameterIn.NumCharacteristics = 1;
+
+                hr = BluetoothGATTRegisterEvent(
+                    hLEDevice,
+                    EventType,
+                    &EventParameterIn,
+                    ParsingBluetoothData,
+                    this,
+                    &EventHandle,
+                    BLUETOOTH_GATT_FLAG_NONE);
+
+                if (EventHandle)
+                {
+                    event_Handle_Arr.Add(EventHandle);
+                }
+
+                if (S_OK != hr) {
+                    UE_LOG(LogTemp, Warning, TEXT("hr error6"));
+                }
+
+            }
+
+            //PBTH_LE_GATT_CHARACTERISTIC_VALUE pCharValueBuffer = (PBTH_LE_GATT_CHARACTERISTIC_VALUE)malloc(charValueDataSize);
+
+            //if (currGattChar->IsReadable) {//currGattChar->IsReadable
+            //                               ////////////////////////////////////////////////////////////////////////////
+            //                               // Determine Characteristic Value Buffer Size
+            //                               ////////////////////////////////////////////////////////////////////////////
+            //    hr = BluetoothGATTGetCharacteristicValue(
+            //        hLEDevice,
+            //        currGattChar,
+            //        0,
+            //        NULL,
+            //        &charValueDataSize,
+            //        BLUETOOTH_GATT_FLAG_NONE);
+
+            //    if (HRESULT_FROM_WIN32(ERROR_MORE_DATA) != hr) {
+
+            //    }
+
+            //    pCharValueBuffer = (PBTH_LE_GATT_CHARACTERISTIC_VALUE)malloc(charValueDataSize);
+
+            //    if (NULL == pCharValueBuffer) {
+
+            //    }
+            //    else {
+            //        RtlZeroMemory(pCharValueBuffer, charValueDataSize);
+            //    }
+
+            //    ////////////////////////////////////////////////////////////////////////////
+            //    // Retrieve the Characteristic Value
+            //    ////////////////////////////////////////////////////////////////////////////
+
+            //    hr = BluetoothGATTGetCharacteristicValue(
+            //        hLEDevice,
+            //        currGattChar,
+            //        (ULONG)charValueDataSize,
+            //        pCharValueBuffer,
+            //        NULL,
+            //        BLUETOOTH_GATT_FLAG_NONE);
+
+            //    if (S_OK != hr) {
+
+            //    }
+
+
+            //    // Free before going to next iteration, or memory leak.
+            //    free(pCharValueBuffer);
+            //    pCharValueBuffer = NULL;
             //}
 
 
-            //데이터 파싱 이벤트 unregister.
-            if (EventHandle != nullptr)
+        }
+
+        //// Go into an inf loop that sleeps. you will ideally see notifications from the Cadence device
+        //while (!m_pause && !m_kill)
+        //{
+        //    //prevHeartRate = heartRate;
+        //    Sleep(1000);
+        //    continue;
+        //}
+
+
+
+        //FPlatformProcess::Sleep(0.001);
+
+        //////UE_LOG(LogTemp, Warning, TEXT("Register OK"));
+
+        ////////문제가 없는 동안은 계속 이벤트를 실행하게 한다.
+        //////while (true)
+        //////{
+        //////    if (m_pause)
+        //////    {
+        //////        UE_LOG(LogTemp, Warning, TEXT("break by m_pause"));
+        //////        break;
+        //////    }
+
+        //////    if (m_kill)
+        //////    {
+        //////        UE_LOG(LogTemp, Warning, TEXT("break by m_kill"));
+        //////        break;
+        //////    }
+
+        //////    if ((GetLastError() != NO_ERROR) && (GetLastError() != ERROR_NO_MORE_ITEMS))
+        //////    {
+        //////        UE_LOG(LogTemp, Warning, TEXT("break by error"));
+        //////        break;
+        //////    }
+        //////}
+
+        //////UE_LOG(LogTemp, Warning, TEXT("Escape"));
+
+        ////FString lengthStr = FString("EventHandle Count : ") + FString::FromInt(event_Handle_Arr.Num());
+        ////UE_LOG(LogTemp, Warning, TEXT("%s"), *lengthStr);
+
+        //데이터 파싱 이벤트 unregister.
+        for (auto eventHandle : event_Handle_Arr)
+        {
+            if (eventHandle != nullptr)
             {
-                BluetoothGATTUnregisterEvent(EventHandle, BLUETOOTH_GATT_FLAG_NONE);
+                BluetoothGATTUnregisterEvent(eventHandle, BLUETOOTH_GATT_FLAG_NONE);
                 //UE_LOG(LogTemp, Warning, TEXT("Unregister OK"));
             }
-
-            //핸들 작업 끝.
-            CloseHandle(hLEDevice);
-
-            //malloc한 부분 Free해준다.
-            free(pCharBuffer);
-            pCharBuffer = nullptr;
-            free(pServiceBuffer);
-            pServiceBuffer = nullptr;
-
-            //루프 재시작 위치
-            if (!m_pause && !m_kill)
-            {
-                //루프를 다시 시작한다... 기기가 꺼져있는지 등등 사유로 재연결 -> 데이터 받기 등을 한다.
-                continue;
-            }
-
         }
+
+        //핸들 작업 끝.
+        CloseHandle(hLEDevice);
+
+        //malloc한 부분 Free해준다.
+        free(pCharBuffer);
+        pCharBuffer = nullptr;
+        free(pServiceBuffer);
+        pServiceBuffer = nullptr;
+
+        ////루프 재시작 위치
+        //if (!m_pause && !m_kill)
+        //{
+        //    //루프를 다시 시작한다... 기기가 꺼져있는지 등등 사유로 재연결 -> 데이터 받기 등을 한다.
+        //    continue;
+        //}
+
+
 
     }
 
@@ -624,11 +660,6 @@ void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTyp
             currentCrankEventTimestamp = (uint16_t)(*ptr) | ((uint16_t)(*(ptr + 1))) << 8;
         }
 
-        //WheelRevolutions = currentWheelRevolutions;
-        //WheelEventTimestamp = currentWheelEventTimestamp;
-        //CrankRevolutions = currentCrankRevolutions;
-        //CrankEventTimestamp = currentCrankEventTimestamp;
-
         BluetoothDataReceiver* receiver = static_cast<BluetoothDataReceiver*>(Context);
         if (receiver)
         {
@@ -646,8 +677,6 @@ void BluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime,
         WheelEventTimestamp = InWheelTime;
         CrankRevolutions = InCrankRevo;
         CrankEventTimestamp = InCrankTime;
-
-        //UE_LOG(LogTemp, Warning, TEXT("Value Changed"));
 
         m_mutex.Unlock();
     }
