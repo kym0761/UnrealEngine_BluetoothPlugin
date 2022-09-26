@@ -51,6 +51,5 @@ it will Parse the Raw Data to the CSCMeasurement format Data.
 You Can Receive Bluetooth Data from BluetoothDataReceiver.
 And, You Can Read Data with ABluetoothDataReader Actor. (not only AActor, UObject also can do it.)
 There is a Example in BluetoothDataReader.h And .cpp
-You must know that "My RPM Formula" in "Reader.cpp code" is not a Correct Answer Because I Don't Know (>_< sorry)
-it is the temporary Fomula for just check that it works!
+You must know that "My RPM Formula" in "Reader.cpp code" is not Correct Answer. it just a Sample formula.
 ```
