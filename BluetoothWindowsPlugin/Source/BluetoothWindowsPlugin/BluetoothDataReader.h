@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "BluetoothDataReader.generated.h"
 
-class BluetoothDataReceiver;
+class FBluetoothDataReceiver;
 
 UCLASS()
 class BLUETOOTHWINDOWSPLUGIN_API ABluetoothDataReader : public AActor
@@ -17,7 +17,7 @@ public:
 	// Sets default values for this actor's properties
 	ABluetoothDataReader();
 
-	TSharedPtr<BluetoothDataReceiver> DataReceiver;
+	TSharedPtr<FBluetoothDataReceiver> DataReceiver;
 
 	FTimerHandle BluetoothReadTimer;
 
@@ -35,7 +35,16 @@ public:
 		float RPM;
 	//Interpolation Target
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
-		float CurrentRPM;
+		float TargetRPM;
+
+	//단위는 cm임. 기본값은 46cm
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Bluetooth")
+		float Diameter = 46.0f;
+	//단위는 km/h
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
+		float BikeSpeed;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
+		float TargetBikeSpeed;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
 		float DataReadInterval;

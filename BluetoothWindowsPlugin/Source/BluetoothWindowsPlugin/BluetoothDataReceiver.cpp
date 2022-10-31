@@ -3,98 +3,90 @@
 
 #include "BluetoothDataReceiver.h"
 
-BluetoothDataReceiver::BluetoothDataReceiver()
+FBluetoothDataReceiver::FBluetoothDataReceiver()
 {
+    UE_LOG(LogTemp, Warning, TEXT("FBluetoothDataReceiver"));
+
 	m_kill = false;
 	m_pause = false;
 
-	// Initialise FEvent
-	m_semaphore = FGenericPlatformProcess::GetSynchEventFromPool(false);
+	//// Create the worker thread
+    Thread = MakeShareable(FRunnableThread::Create(this, TEXT("Cadence Thread"), 0, TPri_BelowNormal));
 
-	// Create the worker thread
-	Thread = FRunnableThread::Create(this, TEXT("Cadence Thread"), 0, TPri_BelowNormal);
 }
 
-BluetoothDataReceiver::~BluetoothDataReceiver()
+FBluetoothDataReceiver::~FBluetoothDataReceiver()
 {
-	if (m_semaphore)
-	{
-		// Clean up the FEvent
-		FGenericPlatformProcess::ReturnSynchEventToPool(m_semaphore);
-		m_semaphore = nullptr;
-	}
+    UE_LOG(LogTemp, Warning, TEXT("~FBluetoothDataReceiver"));
 
-	if (Thread)
+
+
+	if (Thread.IsValid())
 	{
 
 		// Clean up the worker thread
         Thread->Kill();
-		delete Thread;
-		Thread = nullptr;
+
 	}
 }
 
-void BluetoothDataReceiver::EnsureCompletion()
+void FBluetoothDataReceiver::EnsureCompletion()
 {
+    UE_LOG(LogTemp, Warning, TEXT("EnsureCompletion"));
+
 	Stop();
 
-	if (Thread)
+	if (Thread.IsValid())
 	{
 		Thread->WaitForCompletion();
 	}
 }
 
-void BluetoothDataReceiver::PauseThread()
+void FBluetoothDataReceiver::PauseThread()
 {
 	m_pause = true;
 }
 
-void BluetoothDataReceiver::ContinueThread()
+void FBluetoothDataReceiver::ContinueThread()
 {
 	m_pause = false;
 
-	if (m_semaphore)
-	{
-		// FEvent->Trigger() will wake up the thread
-		m_semaphore->Trigger();
-	}
 }
 
-bool BluetoothDataReceiver::IsThreadPaused()
+bool FBluetoothDataReceiver::IsThreadPaused()
 {
 	return (bool)m_pause;
 }
 
-bool BluetoothDataReceiver::Init()
+bool FBluetoothDataReceiver::Init()
 {
+    UE_LOG(LogTemp, Warning, TEXT("FBluetoothDataReceiver::Init()"));
 	return true;
 }
 
-void BluetoothDataReceiver::Stop()
+void FBluetoothDataReceiver::Stop()
 {
     m_kill = true;
-    //m_pause = false; // why? i don t know
     m_pause = true;
 
-    if (m_semaphore)
-    {
-        // Trigger the FEvent in case the thread is sleeping
-        m_semaphore->Trigger();
-    }
+    UE_LOG(LogTemp, Warning, TEXT("FBluetoothDataReceiver::Stop()"));
+
 }
 
-void BluetoothDataReceiver::Exit()
+void FBluetoothDataReceiver::Exit()
 {
-    
+    UE_LOG(LogTemp, Warning, TEXT("FBluetoothDataReceiver::Exit()"));
 }
 
-uint32 BluetoothDataReceiver::Run()
+uint32 FBluetoothDataReceiver::Run()
 {
     //Sleep 0.01 first
     FPlatformProcess::Sleep(0.01);
 
     while (true)
     {
+        bIsOk_toLoop = true;
+
         //kill 상태가 되면 빠져나온다.
         if (m_kill)
         {
@@ -104,9 +96,6 @@ uint32 BluetoothDataReceiver::Run()
         //pause 상태면 멈추고 kill상태로 전환되면 빠져나온다.
         if (m_pause)
         {
-            // FEvent->Wait() will sleep the thread until given a signal Trigger()
-            m_semaphore->Wait();
-
             if (m_kill)
             {
                 break;
@@ -164,7 +153,7 @@ uint32 BluetoothDataReceiver::Run()
             malloc(sizeof(BTH_LE_GATT_SERVICE) * serviceBufferCount);
 
         if (NULL == pServiceBuffer) {
-
+            
         }
         else {
             RtlZeroMemory(pServiceBuffer,
@@ -185,6 +174,7 @@ uint32 BluetoothDataReceiver::Run()
 
         if (S_OK != hr) {
             UE_LOG(LogTemp, Warning, TEXT("hr error1"));
+            bIsOk_toLoop = false;
         }
 
 
@@ -236,6 +226,7 @@ uint32 BluetoothDataReceiver::Run()
 
             if (S_OK != hr) {
                 UE_LOG(LogTemp, Warning, TEXT("hr error2"));
+                bIsOk_toLoop = false;
             }
 
             if (numChars != charBufferSize) {
@@ -301,6 +292,7 @@ uint32 BluetoothDataReceiver::Run()
 
                 if (S_OK != hr) {
                     UE_LOG(LogTemp, Warning, TEXT("hr error3"));
+                    bIsOk_toLoop = false;
                 }
 
                 if (numDescriptors != descriptorBufferSize) {
@@ -347,6 +339,7 @@ uint32 BluetoothDataReceiver::Run()
                         BLUETOOTH_GATT_FLAG_NONE);
                     if (S_OK != hr) {
                         UE_LOG(LogTemp, Warning, TEXT("hr error4"));
+                        bIsOk_toLoop = false;
                     }
                     //you may also get a descriptor that is read (and not notify) andi am guessing the attribute handle is out of limits
                     // we set all descriptors that are notifiable to notify us via IsSubstcibeToNotification
@@ -365,6 +358,7 @@ uint32 BluetoothDataReceiver::Run()
                             BLUETOOTH_GATT_FLAG_NONE);
                         if (S_OK != hr) {
                             UE_LOG(LogTemp, Warning, TEXT("hr error5"));
+                            bIsOk_toLoop = false;
                         }
                         else {
 
@@ -411,6 +405,24 @@ uint32 BluetoothDataReceiver::Run()
 
                 if (S_OK != hr) {
                     UE_LOG(LogTemp, Warning, TEXT("hr error6"));
+                    bIsOk_toLoop = false;
+                }
+                else
+                {
+                    UE_LOG(LogTemp, Warning, TEXT("Loop Start"));
+                    float timer = 5.0f;
+                    while (bIsOk_toLoop == true && m_pause == false && m_kill == false)
+                    {
+                        timer -= 0.01f;
+                        FPlatformProcess::Sleep(0.01);
+                        if (timer < 0)
+                        {
+                            break;
+                        }
+                        //Loop Until Something is Wrong.
+                    }
+
+                    UE_LOG(LogTemp, Warning, TEXT("Loop Ended"));
                 }
 
             }
@@ -541,7 +553,7 @@ uint32 BluetoothDataReceiver::Run()
     return 0;
 }
 
-HANDLE BluetoothDataReceiver::GetBLEHandle(GUID AGuid)
+HANDLE FBluetoothDataReceiver::GetBLEHandle(GUID AGuid)
 {
     HDEVINFO hDI;
     SP_DEVICE_INTERFACE_DATA did;
@@ -594,11 +606,11 @@ HANDLE BluetoothDataReceiver::GetBLEHandle(GUID AGuid)
     return hComm;
 }
 
-void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventType, PVOID EventOutParameter, PVOID Context)
+void FBluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventType, PVOID EventOutParameter, PVOID Context)
 {
     PBLUETOOTH_GATT_VALUE_CHANGED_EVENT ValueChangedEventParameters = (PBLUETOOTH_GATT_VALUE_CHANGED_EVENT)EventOutParameter;
 
-    //UE_LOG(LogTemp, Warning, TEXT("Parsing"));
+    UE_LOG(LogTemp, Warning, TEXT("Parsing"));
 
     HRESULT hr;
     if (0 == ValueChangedEventParameters->CharacteristicValue->DataSize) {
@@ -660,7 +672,7 @@ void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTyp
             currentCrankEventTimestamp = (uint16_t)(*ptr) | ((uint16_t)(*(ptr + 1))) << 8;
         }
 
-        BluetoothDataReceiver* receiver = static_cast<BluetoothDataReceiver*>(Context);
+        FBluetoothDataReceiver* receiver = static_cast<FBluetoothDataReceiver*>(Context);
         if (receiver)
         {
             receiver->SetCadenceData(currentWheelRevolutions, currentWheelEventTimestamp, currentCrankRevolutions, currentCrankEventTimestamp);
@@ -669,7 +681,7 @@ void BluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTyp
     }
 }
 
-void BluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime, int32 InCrankRevo, int32 InCrankTime)
+void FBluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime, int32 InCrankRevo, int32 InCrankTime)
 {
     if (m_mutex.TryLock())
     {
@@ -686,7 +698,7 @@ void BluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime,
     }
 }
 
-void BluetoothDataReceiver::GetCadenceData(int32& WheelRevo, int32& WheelTime, int32& CrankRevo, int32& CrankTime)
+void FBluetoothDataReceiver::GetCadenceData(int32& WheelRevo, int32& WheelTime, int32& CrankRevo, int32& CrankTime)
 {
     if (m_mutex.TryLock())
     {

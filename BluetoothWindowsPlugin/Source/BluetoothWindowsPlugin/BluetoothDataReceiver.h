@@ -30,11 +30,11 @@
 /**
  * FRunnable을 사용하여 다른 쓰레드에서 블루투스 데이터를 받도록 한다.
  */
-class BLUETOOTHWINDOWSPLUGIN_API BluetoothDataReceiver : public FRunnable
+class BLUETOOTHWINDOWSPLUGIN_API FBluetoothDataReceiver : public FRunnable
 {
 public:
-	BluetoothDataReceiver();
-	~BluetoothDataReceiver();
+	FBluetoothDataReceiver();
+	virtual ~FBluetoothDataReceiver();
 
     // Thread handling functions
     void EnsureCompletion();        // Function for killing the thread
@@ -61,15 +61,21 @@ public:
 
 private:
 
-    // Thread to run the worker FRunnable on
-    FRunnableThread* Thread;
+    //// Thread to run the worker FRunnable on
+    //FRunnableThread* Thread;
+    //FEvent* m_semaphore;
+
+    TSharedPtr<FRunnableThread> Thread;
+    //TSharedPtr<FEvent> m_semaphore;
+
 
     FCriticalSection m_mutex;
-    FEvent* m_semaphore;
+
 
     // Thread-safe booleans for changing the state of the thread
     FThreadSafeBool m_kill;
     FThreadSafeBool m_pause;
+    FThreadSafeBool bIsOk_toLoop;
 
     uint32 WheelRevolutions = 0;
     uint16 WheelEventTimestamp = 0;
