@@ -52,6 +52,8 @@ void ABluetoothDataReader::Tick(float DeltaTime)
 
 void ABluetoothDataReader::ReadData()
 {
+	//ReadData()는 DataReadInterval에 설정된 0.01f로 인해 0.01초마다 실행됩니다.
+
 	if (DataReceiver.IsValid())
 	{
 		RunTimer -= DataReadInterval;
@@ -64,8 +66,11 @@ void ABluetoothDataReader::ReadData()
 		DataReceiver->GetCadenceData(current_WR, current_WT, current_CR, current_CT);
 
 		//처음 시작할 때 최초 초기화.
-		if (Prev_WheelRevolutions == 0 && Prev_WheelEventTimeStamp == 0 && Prev_CrankRevolutions == 0 && Prev_CrankEventTimeStamp == 0)
+		if (Prev_WheelRevolutions == 0.0f && Prev_WheelEventTimeStamp == 0.0f && Prev_CrankRevolutions == 0.0f && Prev_CrankEventTimeStamp == 0.0f)
 		{
+
+			//WheelRev, WheelTimeStamp은 쓰지 않지만 기록은 해놓고 있는 상태.
+
 			Prev_WheelRevolutions = current_WR;
 			Prev_WheelEventTimeStamp = current_WT;
 			Prev_CrankRevolutions = current_CR;
@@ -75,21 +80,22 @@ void ABluetoothDataReader::ReadData()
 		}
 		else
 		{
+			//RPM 계산 
 			float currentRPM = 0.0f;
-			if ((current_CT - Prev_CrankEventTimeStamp) != 0) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
+			float div = current_CT - Prev_CrankEventTimeStamp;
+			if (div != 0.0f) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
 			{
-				currentRPM = ((float)(current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f)) * 60.0f;
+				currentRPM = ((float)(current_CR - Prev_CrankRevolutions) / (div / 1024.0f)) * 60.0f;
 			}
 
-			//speed
+			//speed km/h == 거리 / 초 * 0.036f
 			float currentBikeSpeed = 0.0f;
 			int rounds = current_CR - Prev_CrankRevolutions;
 			float pi = 3.1415926535f;
 
-			if ((current_CT - Prev_CrankEventTimeStamp) != 0)
+			if (div != 0.0f)
 			{
-				currentBikeSpeed = rounds * Diameter * pi / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f) *0.036f;
-
+				currentBikeSpeed = rounds * Diameter * pi / (div / 1024.0f) * 0.036f;
 			}
 
 			//계산이 완료됐다면 현재 값을 prev값에 넣어줌
@@ -98,7 +104,7 @@ void ABluetoothDataReader::ReadData()
 			Prev_CrankRevolutions = current_CR;
 			Prev_CrankEventTimeStamp = current_CT;
 
-			//계산된 값이 0을 넘는다면 뛰고 있다 판단하여 runtimer를 Set함.
+			//계산된 값이 0을 넘는다면 뛰고 있다 판단하여 runtimer를 Set함. TimerSet이 2초이므로, 2초로 Set됨.
 			if (currentRPM > 0.0f)
 			{
 				RunTimer = TimerSet;
@@ -106,12 +112,12 @@ void ABluetoothDataReader::ReadData()
 
 			if (RunTimer > 0.0f)
 			{
-														//Runtimer가 활성화 중인데도, current가 0이 되었다면 TargetRPM 값이 변하지 않게 무시함.
+				//Runtimer가 활성화 중인데도, current가 0이 되었다면 TargetRPM 값이 변하지 않게 무시함.
 				if (FMath::IsNearlyEqual(currentRPM, 0.0f))
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("ignore"));
 				}
-				else if (currentRPM > 0.0f)				//계산된 값이 양수면 TargetRPM을 바꿔줌.
+				else if (currentRPM > 0.0f)				//계산된 값이 양수면 TargetRPM을 바꿔줌. CurrentRPM이 0을 초과하면 당연히 CurrentBikeSpeed도 0을 초과함.
 				{
 					TargetRPM = currentRPM;
 					TargetBikeSpeed = currentBikeSpeed;
