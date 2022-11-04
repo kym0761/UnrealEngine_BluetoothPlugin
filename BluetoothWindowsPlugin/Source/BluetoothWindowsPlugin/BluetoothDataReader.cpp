@@ -80,21 +80,20 @@ void ABluetoothDataReader::ReadData()
 		}
 		else
 		{
-			//RPM 계산 
+			//RPM == round / 초 * 60 
 			float currentRPM = 0.0f;
-			float div = current_CT - Prev_CrankEventTimeStamp;
-			if (div != 0.0f) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
-			{
-				currentRPM = ((float)(current_CR - Prev_CrankRevolutions) / (div / 1024.0f)) * 60.0f;
-			}
-
+			
 			//speed km/h == 거리 / 초 * 0.036f
 			float currentBikeSpeed = 0.0f;
-			int rounds = current_CR - Prev_CrankRevolutions;
 			float pi = 3.1415926535f;
 
-			if (div != 0.0f)
+			float div = current_CT - Prev_CrankEventTimeStamp;
+			int rounds = current_CR - Prev_CrankRevolutions;
+
+			
+			if (div != 0.0f) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
 			{
+				currentRPM = rounds / (div / 1024.0f) * 60.0f;
 				currentBikeSpeed = rounds * Diameter * pi / (div / 1024.0f) * 0.036f;
 			}
 
@@ -112,17 +111,18 @@ void ABluetoothDataReader::ReadData()
 
 			if (RunTimer > 0.0f)
 			{
-				//Runtimer가 활성화 중인데도, current가 0이 되었다면 TargetRPM 값이 변하지 않게 무시함.
+				//Runtimer가 활성화 중인데도, current가 0이 되었다면 Target값이 변하지 않게 무시함. 이를 하는 이유는, 바퀴가 돌고 있는데도 컴퓨터상에서 값이 갱신되지 않았을 시에 RPM이 바로 0이 되는 것을 방지하기 위함임.
+				//RunTimer가 음수가 됐을시에 비로소 작동을 멈춰야하는 것을 인지하고 RPM이 급격하게 떨어질 것임.
 				if (FMath::IsNearlyEqual(currentRPM, 0.0f))
 				{
 					//UE_LOG(LogTemp, Warning, TEXT("ignore"));
 				}
-				else if (currentRPM > 0.0f)				//계산된 값이 양수면 TargetRPM을 바꿔줌. CurrentRPM이 0을 초과하면 당연히 CurrentBikeSpeed도 0을 초과함.
+				else if (currentRPM > 0.0f)				//계산된 Current값이 양수면 Target을 바꿔줌.
 				{
 					TargetRPM = currentRPM;
 					TargetBikeSpeed = currentBikeSpeed;
 				}
-				else									//시간이 uint16 값을 초과하면 0으로 돌아가면서 측정값이 마이너스가 되니 초기화
+				else									//시간이 uint16 값을 초과하면 0으로 돌아가면서 측정값이 마이너스가 되니 prev_Value들은 초기화함.
 				{
 					TargetRPM = 0.0f;
 					TargetBikeSpeed = 0.0f;
@@ -133,7 +133,7 @@ void ABluetoothDataReader::ReadData()
 					Prev_CrankEventTimeStamp = 0;
 				}
 			}
-			else if (RunTimer <= 0.0f) //runtimer가 음수가 됐다면 currentRPM을 0으로 세팅하고 interpolate하도록 함.
+			else if (RunTimer <= 0.0f) //runtimer가 음수가 됐다면 current를 0으로 세팅하고 interpolate하도록 함.
 			{
 				TargetRPM = 0.0f;
 				TargetBikeSpeed = 0.0f;
@@ -145,7 +145,7 @@ void ABluetoothDataReader::ReadData()
 				RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 5.0f);
 				BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 5.0f);
 			}
-			else if (FMath::IsNearlyEqual(TargetRPM, 0.0f) && RunTimer > 0.0f) // runtimer가 reset이 되지 않았지만 currentRPM이 0이 됐다면 아주 살짝씩 0으로 줄인다.
+			else if (FMath::IsNearlyEqual(TargetRPM, 0.0f) && RunTimer > 0.0f) // runtimer가 reset이 되지 않았지만 TargetRPM이 0이 됐다면 아주 살짝씩 0으로 줄인다. current가 마이너스일 때만 잠시 TargetRPM이 0이 될 것이다.
 			{
 				RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 0.1f);
 				BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 0.1f);
