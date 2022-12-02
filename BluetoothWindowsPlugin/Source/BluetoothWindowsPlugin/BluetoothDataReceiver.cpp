@@ -415,7 +415,7 @@ uint32 FBluetoothDataReceiver::Run()
                     {
                         timer -= 0.01f;
                         FPlatformProcess::Sleep(0.01);
-                        if (timer < 0)
+                        if (timer < 0.0f)
                         {
                             break;
                         }
