@@ -54,110 +54,108 @@ void ABluetoothDataReader::ReadData()
 {
 	if (DataReceiver.IsValid())
 	{
-		RunTimer -= DataReadInterval;
+		UE_LOG(LogTemp, Warning, TEXT("DataReceiver is not Valid.."));
+		return;
+	}
 
-		int32 current_WR = 0;
-		int32 current_WT = 0;
-		int32 current_CR = 0;
-		int32 current_CT = 0;
+	RunTimer -= DataReadInterval;
 
-		DataReceiver->GetCadenceData(current_WR, current_WT, current_CR, current_CT);
+	int32 current_WR = 0;
+	int32 current_WT = 0;
+	int32 current_CR = 0;
+	int32 current_CT = 0;
 
-		//처음 시작할 때 최초 초기화.
-		if (Prev_WheelRevolutions == 0 && Prev_WheelEventTimeStamp == 0 && Prev_CrankRevolutions == 0 && Prev_CrankEventTimeStamp == 0)
-		{
-			Prev_WheelRevolutions = current_WR;
-			Prev_WheelEventTimeStamp = current_WT;
-			Prev_CrankRevolutions = current_CR;
-			Prev_CrankEventTimeStamp = current_CT;
+	DataReceiver->GetCadenceData(current_WR, current_WT, current_CR, current_CT);
 
-			return;
-		}
-		else
-		{
-			float currentRPM = 0.0f;
-			if ((current_CT - Prev_CrankEventTimeStamp) != 0) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
-			{
-				currentRPM = ((float)(current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f)) * 60.0f;
-			}
+	//처음 시작할 때 최초 초기화.
+	if (Prev_WheelRevolutions == 0 && Prev_WheelEventTimeStamp == 0 && Prev_CrankRevolutions == 0 && Prev_CrankEventTimeStamp == 0)
+	{
+		Prev_WheelRevolutions = current_WR;
+		Prev_WheelEventTimeStamp = current_WT;
+		Prev_CrankRevolutions = current_CR;
+		Prev_CrankEventTimeStamp = current_CT;
 
-			//speed
-			float currentBikeSpeed = 0.0f;
-			int rounds = current_CR - Prev_CrankRevolutions;
-			float pi = 3.1415926535f;
-
-			if ((current_CT - Prev_CrankEventTimeStamp) != 0)
-			{
-				currentBikeSpeed = rounds * Diameter * pi / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f) *0.036f;
-
-			}
-
-			//계산이 완료됐다면 현재 값을 prev값에 넣어줌
-			Prev_WheelRevolutions = current_WR;
-			Prev_WheelEventTimeStamp = current_WT;
-			Prev_CrankRevolutions = current_CR;
-			Prev_CrankEventTimeStamp = current_CT;
-
-			//계산된 값이 0을 넘는다면 뛰고 있다 판단하여 runtimer를 Set함.
-			if (currentRPM > 0.0f)
-			{
-				RunTimer = TimerSet;
-			}
-
-			if (RunTimer > 0.0f)
-			{
-														//Runtimer가 활성화 중인데도, current가 0이 되었다면 TargetRPM 값이 변하지 않게 무시함.
-				if (FMath::IsNearlyEqual(currentRPM, 0.0f))
-				{
-					//UE_LOG(LogTemp, Warning, TEXT("ignore"));
-				}
-				else if (currentRPM > 0.0f)				//계산된 값이 양수면 TargetRPM을 바꿔줌.
-				{
-					TargetRPM = currentRPM;
-					TargetBikeSpeed = currentBikeSpeed;
-				}
-				else									//시간이 uint16 값을 초과하면 0으로 돌아가면서 측정값이 마이너스가 되니 초기화
-				{
-					TargetRPM = 0.0f;
-					TargetBikeSpeed = 0.0f;
-
-					Prev_WheelRevolutions = 0;
-					Prev_WheelEventTimeStamp = 0;
-					Prev_CrankRevolutions = 0;
-					Prev_CrankEventTimeStamp = 0;
-				}
-			}
-			else if (RunTimer <= 0.0f) //runtimer가 음수가 됐다면 currentRPM을 0으로 세팅하고 interpolate하도록 함.
-			{
-				TargetRPM = 0.0f;
-				TargetBikeSpeed = 0.0f;
-			}
-
-			//RPM을 TargetRPM에 interpolate함.
-			if (TargetRPM > 0.0f && RunTimer > 0.0f) // 기본 interpolate
-			{
-				RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 5.0f);
-				BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 5.0f);
-			}
-			else if (FMath::IsNearlyEqual(TargetRPM, 0.0f) && RunTimer > 0.0f) // runtimer가 reset이 되지 않았지만 currentRPM이 0이 됐다면 아주 살짝씩 0으로 줄인다.
-			{
-				RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 0.1f);
-				BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 0.1f);
-			}
-			else //runtimer가 reset되면 빠르게 0으로 줄인다. target도 0일 것이다.
-			{
-				RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 0.5f);
-				BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 0.5f);
-			}
-
-
-
-		}
-
+		return;
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("DataReceiver is not Valid.."));
+		float currentRPM = 0.0f;
+		if ((current_CT - Prev_CrankEventTimeStamp) != 0) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
+		{
+			currentRPM = ((float)(current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f)) * 60.0f;
+		}
+
+		//speed
+		float currentBikeSpeed = 0.0f;
+		int rounds = current_CR - Prev_CrankRevolutions;
+		float pi = 3.1415926535f;
+
+		if ((current_CT - Prev_CrankEventTimeStamp) != 0)
+		{
+			currentBikeSpeed = rounds * Diameter * pi / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f) * 0.036f;
+
+		}
+
+		//계산이 완료됐다면 현재 값을 prev값에 넣어줌
+		Prev_WheelRevolutions = current_WR;
+		Prev_WheelEventTimeStamp = current_WT;
+		Prev_CrankRevolutions = current_CR;
+		Prev_CrankEventTimeStamp = current_CT;
+
+		//계산된 값이 0을 넘는다면 뛰고 있다 판단하여 runtimer를 Set함.
+		if (currentRPM > 0.0f)
+		{
+			RunTimer = TimerSet;
+		}
+
+		if (RunTimer > 0.0f)
+		{
+			//Runtimer가 활성화 중인데도, current가 0이 되었다면 TargetRPM 값이 변하지 않게 무시함.
+			if (FMath::IsNearlyEqual(currentRPM, 0.0f))
+			{
+				//UE_LOG(LogTemp, Warning, TEXT("ignore"));
+			}
+			else if (currentRPM > 0.0f)				//계산된 값이 양수면 TargetRPM을 바꿔줌.
+			{
+				TargetRPM = currentRPM;
+				TargetBikeSpeed = currentBikeSpeed;
+			}
+			else									//시간이 uint16 값을 초과하면 0으로 돌아가면서 측정값이 마이너스가 되니 초기화
+			{
+				TargetRPM = 0.0f;
+				TargetBikeSpeed = 0.0f;
+
+				Prev_WheelRevolutions = 0;
+				Prev_WheelEventTimeStamp = 0;
+				Prev_CrankRevolutions = 0;
+				Prev_CrankEventTimeStamp = 0;
+			}
+		}
+		else if (RunTimer <= 0.0f) //runtimer가 음수가 됐다면 currentRPM을 0으로 세팅하고 interpolate하도록 함.
+		{
+			TargetRPM = 0.0f;
+			TargetBikeSpeed = 0.0f;
+		}
+
+		//RPM을 TargetRPM에 interpolate함.
+		if (TargetRPM > 0.0f && RunTimer > 0.0f) // 기본 interpolate
+		{
+			RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 5.0f);
+			BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 5.0f);
+		}
+		else if (FMath::IsNearlyEqual(TargetRPM, 0.0f) && RunTimer > 0.0f) // runtimer가 reset이 되지 않았지만 currentRPM이 0이 됐다면 아주 살짝씩 0으로 줄인다.
+		{
+			RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 0.1f);
+			BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 0.1f);
+		}
+		else //runtimer가 reset되면 빠르게 0으로 줄인다. target도 0일 것이다.
+		{
+			RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 0.5f);
+			BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 0.5f);
+		}
+
+
+
 	}
 
 }
