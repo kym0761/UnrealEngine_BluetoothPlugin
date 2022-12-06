@@ -60,10 +60,10 @@ void ABluetoothDataReader::ReadData()
 
 	RunTimer -= DataReadInterval;
 
-	int32 current_WR = 0;
-	int32 current_WT = 0;
-	int32 current_CR = 0;
-	int32 current_CT = 0;
+	uint32 current_WR = 0;
+	uint16 current_WT = 0;
+	uint16 current_CR = 0;
+	uint16 current_CT = 0;
 
 	DataReceiver->GetCadenceData(current_WR, current_WT, current_CR, current_CT);
 
@@ -153,9 +153,6 @@ void ABluetoothDataReader::ReadData()
 			RPM = FMath::FInterpTo(RPM, TargetRPM, DataReadInterval, 0.5f);
 			BikeSpeed = FMath::FInterpTo(BikeSpeed, TargetBikeSpeed, DataReadInterval, 0.5f);
 		}
-
-
-
 	}
 
 }

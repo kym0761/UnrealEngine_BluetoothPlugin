@@ -55,9 +55,9 @@ public:
 
     // Function to get Cadence Data
     //setter
-    void SetCadenceData(int32 InWheelRevo, int32 InWheelTime, int32 InCrankRevo, int32 InCrankTime);
+    void SetCadenceData(uint32 InWheelRevo, uint16 InWheelTime, uint16 InCrankRevo, uint16 InCrankTime);
     //getter outter
-    void GetCadenceData(int32& WheelRevo , int32& WheelTime, int32& CrankRevo, int32& CrankTime);
+    void GetCadenceData(uint32& WheelRevo , uint16& WheelTime, uint16& CrankRevo, uint16& CrankTime);
 
 private:
 

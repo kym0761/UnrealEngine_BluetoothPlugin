@@ -681,7 +681,7 @@ void FBluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTy
     }
 }
 
-void FBluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime, int32 InCrankRevo, int32 InCrankTime)
+void FBluetoothDataReceiver::SetCadenceData(uint32 InWheelRevo, uint16 InWheelTime, uint16 InCrankRevo, uint16 InCrankTime)
 {
     if (m_mutex.TryLock())
     {
@@ -698,14 +698,14 @@ void FBluetoothDataReceiver::SetCadenceData(int32 InWheelRevo, int32 InWheelTime
     }
 }
 
-void FBluetoothDataReceiver::GetCadenceData(int32& WheelRevo, int32& WheelTime, int32& CrankRevo, int32& CrankTime)
+void FBluetoothDataReceiver::GetCadenceData(uint32& WheelRevo, uint16& WheelTime, uint16& CrankRevo, uint16& CrankTime)
 {
     if (m_mutex.TryLock())
     {
-        WheelRevo = (int32)WheelRevolutions;
-        WheelTime = (int32)WheelEventTimestamp;
-        CrankRevo = (int32)CrankRevolutions;
-        CrankTime = (int32)CrankEventTimestamp;
+        WheelRevo = WheelRevolutions;
+        WheelTime = WheelEventTimestamp;
+        CrankRevo = CrankRevolutions;
+        CrankTime = CrankEventTimestamp;
 
         m_mutex.Unlock();
     }
