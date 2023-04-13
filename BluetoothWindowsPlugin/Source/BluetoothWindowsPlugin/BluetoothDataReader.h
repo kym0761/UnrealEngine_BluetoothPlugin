@@ -22,13 +22,13 @@ public:
 	FTimerHandle BluetoothReadTimer;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
-	int32 Prev_WheelRevolutions = 0;
+		int32 Prev_WheelRevolutions = 0;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
-	int32 Prev_WheelEventTimeStamp = 0;
+		int32 Prev_WheelEventTimeStamp = 0;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
-	int32 Prev_CrankRevolutions = 0;
+		int32 Prev_CrankRevolutions = 0;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")
-	int32 Prev_CrankEventTimeStamp = 0;
+		int32 Prev_CrankEventTimeStamp = 0;
 
 	//½ÇÁ¦ RPM
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "Bluetooth")

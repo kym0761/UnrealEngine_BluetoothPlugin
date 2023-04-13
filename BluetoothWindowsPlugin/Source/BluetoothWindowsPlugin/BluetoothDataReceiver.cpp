@@ -610,7 +610,7 @@ void FBluetoothDataReceiver::ParsingBluetoothData(BTH_LE_GATT_EVENT_TYPE EventTy
 {
     PBLUETOOTH_GATT_VALUE_CHANGED_EVENT ValueChangedEventParameters = (PBLUETOOTH_GATT_VALUE_CHANGED_EVENT)EventOutParameter;
 
-    UE_LOG(LogTemp, Warning, TEXT("Parsing"));
+    //UE_LOG(LogTemp, Warning, TEXT("Parsing"));
 
     HRESULT hr;
     if (0 == ValueChangedEventParameters->CharacteristicValue->DataSize) {

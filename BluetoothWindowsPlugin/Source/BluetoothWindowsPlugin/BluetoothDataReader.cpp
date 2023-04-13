@@ -52,7 +52,7 @@ void ABluetoothDataReader::Tick(float DeltaTime)
 
 void ABluetoothDataReader::ReadData()
 {
-	if (DataReceiver.IsValid())
+	if (!DataReceiver.IsValid())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("DataReceiver is not Valid.."));
 		return;
@@ -80,9 +80,12 @@ void ABluetoothDataReader::ReadData()
 	else
 	{
 		float currentRPM = 0.0f;
-		if ((current_CT - Prev_CrankEventTimeStamp) != 0) //만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
+
+		//만약 현재시간-이전시간 값이 0이 되면 나누기 연산 실패
+		if ((current_CT - Prev_CrankEventTimeStamp) != 0)
 		{
-			currentRPM = ((float)(current_CR - Prev_CrankRevolutions) / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f)) * 60.0f;
+			currentRPM = ((float)(current_CR - Prev_CrankRevolutions) 
+				/ ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f)) * 60.0f;
 		}
 
 		//speed
@@ -92,7 +95,8 @@ void ABluetoothDataReader::ReadData()
 
 		if ((current_CT - Prev_CrankEventTimeStamp) != 0)
 		{
-			currentBikeSpeed = rounds * Diameter * pi / ((current_CT - Prev_CrankEventTimeStamp) / 1024.0f) * 0.036f;
+			currentBikeSpeed = rounds * Diameter * pi / 
+				((current_CT - Prev_CrankEventTimeStamp) / 1024.0f) * 0.036f;
 
 		}
 
